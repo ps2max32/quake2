@@ -155,15 +155,8 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
-#ifdef MXGL_HIRES
-	/* hires: the textures of a room must fit in GS memory (1.8 MiB): half
-	   size (at full size they are 1.8 MiB even as 8-bit indices) */
-#define PS2_PICMIP "+set gl_picmip 1 "
-#else
-#define PS2_PICMIP ""
-#endif
 	static char line[512] = "quake2 +set basedir host: +set vid_ref gl "
-	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR " PS2_PICMIP PS2_ARGS;
+	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR " PS2_ARGS;
 	static char *args[64];
 	int n = 0;
 	for (char *p = strtok(line, " "); p && n < 63; p = strtok(NULL, " "))

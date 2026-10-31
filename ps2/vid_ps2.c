@@ -6,6 +6,7 @@
 #include <mx/pad.h>
 
 #include "../client/client.h"
+#include "../client/qmenu.h"
 
 viddef_t viddef;
 unsigned sys_frame_time;
@@ -41,25 +42,32 @@ void VID_NewWindow(int width, int height) {
 	viddef.height = height;
 }
 
-/* one mode: maxsdk_gl's 640 x 448 (MXGL_HIRES: the 960 x 540 window of
-   glimp_ps2.c) */
-#ifdef MXGL_HIRES
-#define WIN_W 960
-#define WIN_H 540
-#else
-#define WIN_W 640
-#define WIN_H 448
-#endif
+/* the window is glimp_ps2.c's (the TV's screen, or 960 x 540 in 1080i):
+   the mode of gl_mode is not used */
 qboolean VID_GetModeInfo(int *width, int *height, int mode) {
-	*width = WIN_W;
-	*height = WIN_H;
+	*width = viddef.width;
+	*height = viddef.height;
 	return true;
 }
 
+/* vid_hires 1: 1080i (glimp_ps2.c), with the textures at half size
+   (gl_picmip 1): a room's do not fit in GS memory at full size (1.8 MiB
+   even as 8-bit indices), and the memory 1080i takes is what they leave */
+static cvar_t *vid_ref, *vid_hires;
+static void VID_HiresPicmip(void) {
+	Cvar_SetValue("gl_picmip", vid_hires->value == 1);
+}
+
+static void VID_Restart_f(void) { vid_ref->modified = true; }
+
 void VID_Init(void) {
 	refimport_t ri;
-	viddef.width = WIN_W;
-	viddef.height = WIN_H;
+	vid_ref = Cvar_Get("vid_ref", "gl", 0);
+	vid_hires = Cvar_Get("vid_hires", "0", 0);
+	VID_HiresPicmip();
+	Cmd_AddCommand("vid_restart", VID_Restart_f);
+	viddef.width = 640;
+	viddef.height = 448;
 	ri.Cmd_AddCommand = Cmd_AddCommand;
 	ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
 	ri.Cmd_Argc = Cmd_Argc;
@@ -81,6 +89,8 @@ void VID_Init(void) {
 		Com_Error(ERR_FATAL, "Re has incompatible api_version");
 	if (re.Init(NULL, NULL) == -1)
 		Com_Error(ERR_FATAL, "Couldn't start refresh");
+	vid_ref->modified = false;
+	vid_hires->modified = false;
 }
 
 void VID_Shutdown(void) {
@@ -88,10 +98,97 @@ void VID_Shutdown(void) {
 		re.Shutdown();
 }
 
-void VID_CheckChanges(void) {}
-void VID_MenuInit(void) {}
-void VID_MenuDraw(void) {}
-const char *VID_MenuKey(int k) { return NULL; }
+/* the refresh again (win32/vid_dll.c's VID_CheckChanges): the mode is set
+   as it starts, the textures and models are loaded again (gl_picmip) */
+void VID_CheckChanges(void) {
+	if (vid_hires->modified) {
+		vid_hires->modified = false;
+		VID_HiresPicmip();
+		vid_ref->modified = true;
+	}
+	if (!vid_ref->modified)
+		return;
+	vid_ref->modified = false;
+	cl.force_refdef = true; /* can't use a paused refdef */
+	S_StopAllSounds();
+	cl.refresh_prepped = false;
+	cls.disable_screen = true;
+	re.Shutdown();
+	if (re.Init(NULL, NULL) == -1)
+		Com_Error(ERR_FATAL, "Couldn't start refresh");
+	cls.disable_screen = false;
+}
+
+/* ---- the Video menu: the TV's mode or 1080i (vid_hires) --------------------- */
+
+void M_PopMenu(void);
+
+static menuframework_s vid_menu;
+static menulist_s vid_mode_list;
+static menuaction_s vid_apply;
+
+static void VID_ApplyCallback(void *unused) {
+	Cvar_SetValue("vid_hires", vid_mode_list.curvalue);
+	M_ForceMenuOff();
+}
+
+void VID_MenuInit(void) {
+	static const char *modes[] = {"TV (NTSC/PAL)", "1080i", 0};
+	vid_menu.x = viddef.width / 2;
+	vid_menu.y = viddef.height / 2 - 30;
+	vid_menu.nitems = 0;
+	vid_mode_list.generic.type = MTYPE_SPINCONTROL;
+	vid_mode_list.generic.name = "video mode";
+	vid_mode_list.generic.x = 0;
+	vid_mode_list.generic.y = 0;
+	vid_mode_list.itemnames = modes;
+	vid_mode_list.curvalue = Cvar_VariableValue("vid_hires") == 1;
+	vid_apply.generic.type = MTYPE_ACTION;
+	vid_apply.generic.name = "apply";
+	vid_apply.generic.x = 0;
+	vid_apply.generic.y = 20;
+	vid_apply.generic.callback = VID_ApplyCallback;
+	Menu_AddItem(&vid_menu, &vid_mode_list);
+	Menu_AddItem(&vid_menu, &vid_apply);
+	Menu_SetStatusBar(&vid_menu, "1080i needs a TV that takes it (component)");
+	Menu_Center(&vid_menu);
+}
+
+void VID_MenuDraw(void) {
+	int w, h;
+	vid_menu.x = viddef.width / 2;
+	re.DrawGetPicSize(&w, &h, "m_banner_video");
+	re.DrawPic(viddef.width / 2 - w / 2, viddef.height / 2 - 110, "m_banner_video");
+	Menu_AdjustCursor(&vid_menu, 1);
+	Menu_Draw(&vid_menu);
+}
+
+const char *VID_MenuKey(int key) {
+	menuframework_s *m = &vid_menu;
+	switch (key) {
+	case K_ESCAPE:
+		M_PopMenu();
+		return NULL;
+	case K_UPARROW:
+		m->cursor--;
+		Menu_AdjustCursor(m, -1);
+		break;
+	case K_DOWNARROW:
+		m->cursor++;
+		Menu_AdjustCursor(m, 1);
+		break;
+	case K_LEFTARROW:
+		Menu_SlideItem(m, -1);
+		break;
+	case K_RIGHTARROW:
+		Menu_SlideItem(m, 1);
+		break;
+	case K_ENTER:
+		Menu_SelectItem(m);
+		break;
+	}
+	return "misc/menu1.wav";
+}
 
 /* ---- input: pad 0 ------------------------------------------------------- */
 
