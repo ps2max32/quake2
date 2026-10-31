@@ -10,8 +10,9 @@
 # one object whose symbols are local except GetGameAPI / GetRefAPI, renamed
 # game_GetGameAPI / ref_GetRefAPI (their copies of q_shared.c, Com_Printf
 # and Sys_Error do not clash). The refresh draws through libs/maxsdk_gl
-# (ps2/qgl_ps2.c, ps2/glimp_ps2.c). Sound and CD audio are id's null
-# drivers, the network the loopback (ps2/net_ps2.c).
+# (ps2/qgl_ps2.c, ps2/glimp_ps2.c). Sound is id's mixer on maxsdk's
+# mx/snd.h stream (ps2/snddma_ps2.c); CD audio is id's null driver, the
+# network the loopback (ps2/net_ps2.c).
 
 HERE     := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PS2MAX   ?= $(abspath $(HERE)/../..)
@@ -48,7 +49,7 @@ ENGINE   := client/cl_cin client/cl_ents client/cl_fx client/cl_input client/cl_
             qcommon/md4 qcommon/net_chan qcommon/pmove \
             server/sv_ccmds server/sv_ents server/sv_game server/sv_init server/sv_main \
             server/sv_send server/sv_user server/sv_world \
-            game/q_shared null/cd_null null/snddma_null \
+            game/q_shared null/cd_null ps2/snddma_ps2 \
             ps2/sys_ps2 ps2/vid_ps2 ps2/net_ps2 ps2/ps2_file
 GAME     := $(basename $(notdir $(wildcard $(HERE)/game/*.c)))
 REF      := $(addprefix ref_gl/,gl_draw gl_image gl_light gl_mesh gl_model gl_rmain gl_rmisc \

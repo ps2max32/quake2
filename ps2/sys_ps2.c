@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
 #else
 #define PS2_PICMIP ""
 #endif
-	static char line[512] = "quake2 +set basedir host: +set s_initsound 0 +set vid_ref gl "
+	static char line[512] = "quake2 +set basedir host: +set vid_ref gl "
 	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR " PS2_PICMIP PS2_ARGS;
 	static char *args[64];
 	int n = 0;

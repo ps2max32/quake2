@@ -147,7 +147,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	stepscale = (float)info.rate / dma.speed;	
 	len = info.samples / stepscale;
 
-	len = len * info.width * info.channels;
+	len = len * (s_loadas8bit->value ? 1 : info.width) * info.channels; /* PS2: as ResampleSfx stores it */
 
 	sc = s->cache = Z_Malloc (len + sizeof(sfxcache_t));
 	if (!sc)
