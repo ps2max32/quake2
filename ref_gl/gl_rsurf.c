@@ -1061,6 +1061,12 @@ e->angles[2] = -e->angles[2];	// stupid quake bug
 R_RecursiveWorldNode
 ================
 */
+#ifdef __PS2__
+/* the frustum planes a node is not yet known to be wholly inside of (bit
+   i: frustum[i]), for the node R_RecursiveWorldNode is called on: its
+   children skip the planes it is inside of (as Quake's software renderer) */
+static int r_node_clip = 15;
+#endif
 void R_RecursiveWorldNode (mnode_t *node)
 {
 	int			c, side, sidebit;
@@ -1075,8 +1081,26 @@ void R_RecursiveWorldNode (mnode_t *node)
 
 	if (node->visframe != r_visframecount)
 		return;
+#ifdef __PS2__
+	int clip = r_node_clip;
+	if (clip && !r_nocull->value)
+	{
+		int i;
+		for (i = 0; i < 4; i++)
+		{
+			if (!(clip & (1 << i)))
+				continue;
+			int s = BOX_ON_PLANE_SIDE (node->minmaxs, node->minmaxs+3, &frustum[i]);
+			if (s == 2)
+				return;
+			if (s == 1)
+				clip &= ~(1 << i);
+		}
+	}
+#else
 	if (R_CullBox (node->minmaxs, node->minmaxs+3))
 		return;
+#endif
 	
 // if a leaf node, draw stuff
 	if (node->contents != -1)
@@ -1138,6 +1162,9 @@ void R_RecursiveWorldNode (mnode_t *node)
 	}
 
 // recurse down the children, front side first
+#ifdef __PS2__
+	r_node_clip = clip;
+#endif
 	R_RecursiveWorldNode (node->children[side]);
 
 	// draw stuff
@@ -1177,6 +1204,9 @@ void R_RecursiveWorldNode (mnode_t *node)
 	}
 
 	// recurse down the back side
+#ifdef __PS2__
+	r_node_clip = clip;
+#endif
 	R_RecursiveWorldNode (node->children[!side]);
 /*
 	for ( ; c ; c--, surf++)
@@ -1260,12 +1290,18 @@ void R_DrawWorld (void)
 		else 
 			GL_TexEnv( GL_MODULATE );
 
+#ifdef __PS2__
+		r_node_clip = 15;
+#endif
 		R_RecursiveWorldNode (r_worldmodel->nodes);
 
 		GL_EnableMultitexture( false );
 	}
 	else
 	{
+#ifdef __PS2__
+		r_node_clip = 15;
+#endif
 		R_RecursiveWorldNode (r_worldmodel->nodes);
 	}
 

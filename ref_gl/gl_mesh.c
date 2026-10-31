@@ -70,6 +70,22 @@ void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *ver
 			lerp[2] = move[2] + ov->v[2]*backv[2] + v->v[2]*frontv[2] + normal[2] * POWERSUIT_SCALE; 
 		}
 	}
+#ifdef __PS2__
+	else
+	{
+		/* the factors in registers: lerp could alias them, so each would be
+		   loaded again every vertex */
+		float m0 = move[0], m1 = move[1], m2 = move[2];
+		float b0 = backv[0], b1 = backv[1], b2 = backv[2];
+		float f0 = frontv[0], f1 = frontv[1], f2 = frontv[2];
+		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4)
+		{
+			lerp[0] = m0 + ov->v[0]*b0 + v->v[0]*f0;
+			lerp[1] = m1 + ov->v[1]*b1 + v->v[1]*f1;
+			lerp[2] = m2 + ov->v[2]*b2 + v->v[2]*f2;
+		}
+	}
+#else
 	else
 	{
 		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4)
@@ -79,6 +95,7 @@ void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *ver
 			lerp[2] = move[2] + ov->v[2]*backv[2] + v->v[2]*frontv[2];
 		}
 	}
+#endif
 
 }
 
@@ -257,17 +274,26 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 		int nv = 0, np = 0, one = alpha < 1;
 		float a8 = alpha * 255;
 
-		for ( i = 0; i < paliashdr->num_xyz; i++ )
+		/* a vertex's colour depends only on its normal's index (a byte):
+		   with more vertices than indices, each index's colour once and a
+		   word a vertex */
+		int nl = paliashdr->num_xyz > 256 ? 256 : paliashdr->num_xyz;
+		static byte ncol[256][4] __attribute__((aligned(4)));
+		byte (*lit)[4] = nl == 256 ? ncol : vcol;
+		for ( i = 0; i < nl; i++ )
 		{
-			float c8, l = shadedots[verts[i].lightnormalindex] * 255;
+			float c8, l = shadedots[nl == 256 ? i : verts[i].lightnormalindex] * 255;
 			int k;
 			for ( k = 0; k < 3; k++ )
 			{
 				c8 = l * shadelight[k];
-				vcol[i][k] = c8 <= 0 ? 0 : c8 >= 255 ? 255 : (int)c8;
+				lit[i][k] = c8 <= 0 ? 0 : c8 >= 255 ? 255 : (int)c8;
 			}
-			vcol[i][3] = a8 <= 0 ? 0 : a8 >= 255 ? 255 : (int)a8;
+			lit[i][3] = a8 <= 0 ? 0 : a8 >= 255 ? 255 : (int)a8;
 		}
+		if ( lit == ncol )
+			for ( i = 0; i < paliashdr->num_xyz; i++ )
+				*(unsigned *)vcol[i] = *(unsigned *)ncol[verts[i].lightnormalindex];
 		/* opaque: the command list as it is, each vertex transformed once */
 		if (!one)
 		{

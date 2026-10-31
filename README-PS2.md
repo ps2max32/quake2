@@ -41,4 +41,4 @@ On the PS2 (2026-10-31): base1 at 50 to 53 fps, `demo1.dm2` at 43 to 60 (about 5
 average); no pass late. World polygons go through `mxgl_DrawPolygon`, models as vertex
 arrays (`glDrawArrays` of each strip and fan, `ref_gl/gl_mesh.c`), `GL_FindImage` has a
 name cache, the palette goes to maxsdk_gl after the intensity and gamma tables
-(`ref_gl/gl_image.c`). `make PROF=1` profiles the second half of a `FRAMES` run.
+(`ref_gl/gl_image.c`). `make PROF=1` profiles the second half of a `FRAMES` run; `PROF=<t>` (ms) the game time t .. t + 1 s (a demo's, the same in every run; `ps2: frame` lines show it), and ends there.

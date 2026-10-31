@@ -416,11 +416,71 @@ void GL_DrawParticles( int num_particles, const particle_t particles[], const un
 	qglDepthMask( GL_FALSE );		// no z buffering
 	qglEnable( GL_BLEND );
 	GL_TexEnv( GL_MODULATE );
+#ifndef __PS2__
 	qglBegin( GL_TRIANGLES );
+#endif
 
 	VectorScale (vup, 1.5, up);
 	VectorScale (vright, 1.5, right);
 
+#ifdef __PS2__
+	/* the same triangles from a vertex array: one draw for up to
+	   PS2_PART_MAX particles, not seven GL calls each */
+	{
+#define PS2_PART_MAX 1024
+		static struct { float xyz[3], st[2]; byte c[4]; } pv[3 * PS2_PART_MAX];
+		int n = 0;
+		qglEnableClientState( GL_VERTEX_ARRAY );
+		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+		qglEnableClientState( GL_COLOR_ARRAY );
+		qglVertexPointer( 3, GL_FLOAT, sizeof(pv[0]), pv[0].xyz );
+		qglTexCoordPointer( 2, GL_FLOAT, sizeof(pv[0]), pv[0].st );
+		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof(pv[0]), pv[0].c );
+		for ( p = particles, i=0 ; i < num_particles ; i++,p++)
+		{
+			scale = ( p->origin[0] - r_origin[0] ) * vpn[0] +
+				    ( p->origin[1] - r_origin[1] ) * vpn[1] +
+				    ( p->origin[2] - r_origin[2] ) * vpn[2];
+			if (scale < 20)
+				scale = 1;
+			else
+				scale = 1 + scale * 0.004;
+			*(int *)color = colortable[p->color];
+			color[3] = p->alpha*255;
+			pv[n].xyz[0] = p->origin[0];
+			pv[n].xyz[1] = p->origin[1];
+			pv[n].xyz[2] = p->origin[2];
+			pv[n].st[0] = 0.0625, pv[n].st[1] = 0.0625;
+			pv[n + 1].xyz[0] = p->origin[0] + up[0]*scale;
+			pv[n + 1].xyz[1] = p->origin[1] + up[1]*scale;
+			pv[n + 1].xyz[2] = p->origin[2] + up[2]*scale;
+			pv[n + 1].st[0] = 1.0625, pv[n + 1].st[1] = 0.0625;
+			pv[n + 2].xyz[0] = p->origin[0] + right[0]*scale;
+			pv[n + 2].xyz[1] = p->origin[1] + right[1]*scale;
+			pv[n + 2].xyz[2] = p->origin[2] + right[2]*scale;
+			pv[n + 2].st[0] = 0.0625, pv[n + 2].st[1] = 1.0625;
+			memcpy( pv[n].c, color, 4 );
+			memcpy( pv[n + 1].c, color, 4 );
+			memcpy( pv[n + 2].c, color, 4 );
+			n += 3;
+			if (n == 3 * PS2_PART_MAX)
+			{
+				qglDrawArrays( GL_TRIANGLES, 0, n );
+				n = 0;
+			}
+		}
+		if (n)
+			qglDrawArrays( GL_TRIANGLES, 0, n );
+		qglDisableClientState( GL_VERTEX_ARRAY );
+		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+		qglDisableClientState( GL_COLOR_ARRAY );
+	}
+	qglDisable( GL_BLEND );
+	qglColor4f( 1,1,1,1 );
+	qglDepthMask( 1 );		// back to normal Z buffering
+	GL_TexEnv( GL_REPLACE );
+	return;
+#endif
 	for ( p = particles, i=0 ; i < num_particles ; i++,p++)
 	{
 		// hack a scale up to keep particles from disapearing

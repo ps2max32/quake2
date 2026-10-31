@@ -15,6 +15,8 @@ void mx_exit(int status) __attribute__((noreturn));
    picture, and more of the command line; set by the Makefile */
 #include "runcfg.h"
 
+int ps2_cl_time(void);
+
 static void ps2_end(int status) {
 	mx_printf("@@PS2TEST_END@@ status=%d\n", status);
 	mx_exit(status);
@@ -184,14 +186,29 @@ int main(int argc, char **argv) {
 			continue;
 		frames = (int)mx_gs.frames;
 		if (frames % 60 == 0)
-			mx_printf("ps2: frame %d at %d ms\n", frames, newtime);
-#if PS2_PROF
+			mx_printf("ps2: frame %d at %d ms, game time %d ms\n", frames, newtime, ps2_cl_time());
+#if PS2_PROF == 1
 		/* the profile of the second half of the run */
 		if (PS2_FRAMES && frames == PS2_FRAMES / 2)
 			mx_prof_start(2000);
+#elif PS2_PROF
+		/* PROF=t: the profile of the game time t .. t + 1 s (a demo's is
+		   the same in every run), then the end */
+		{
+			static int prof_on;
+			int gt = ps2_cl_time();
+			if (!prof_on && gt >= PS2_PROF && gt < PS2_PROF + 1000)
+				mx_prof_start(2000), prof_on = 1;
+			if (prof_on == 1 && gt >= PS2_PROF + 1000) {
+				mx_prof_stop();
+				mx_prof_report(600);
+				prof_on = 2;
+				ps2_end(0);
+			}
+		}
 #endif
 		if (PS2_FRAMES && frames >= PS2_FRAMES) {
-#if PS2_PROF
+#if PS2_PROF == 1
 			mx_prof_stop();
 			mx_prof_report(600);
 #endif

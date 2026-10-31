@@ -89,6 +89,10 @@ cvar_t	*cl_vwep;
 
 client_static_t	cls;
 client_state_t	cl;
+#ifdef __PS2__
+/* the game time (a demo's: the same in every run), for ps2/sys_ps2.c */
+int ps2_cl_time (void) { return cl.time; }
+#endif
 
 centity_t		cl_entities[MAX_EDICTS];
 
