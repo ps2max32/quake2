@@ -20,6 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // gl_mesh.c: triangle model functions
 
 #include "gl_local.h"
+#ifdef __PS2__
+#include <mxgl.h>
+#endif
 
 /*
 =============================================================
@@ -242,8 +245,16 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 	   a vertex), each vertex lit once */
 	else if ( !( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) ) )
 	{
-		static struct { float xyz[3], st[2]; byte c[4]; } buf[MAX_VERTS];
-		static byte vcol[MAX_VERTS][4];
+		/* all of a model's strips and fans in one array, drawn in one call
+		   (mxgl_MultiDraw); a translucent one a primitive at a time, in
+		   order */
+#define PS2_MAX_CMDV 4096
+#define PS2_MAX_PRIMS 512
+		static struct { float xyz[3], st[2]; byte c[4]; } buf[PS2_MAX_CMDV];
+		static byte vcol[MAX_VERTS][4] __attribute__((aligned(4)));
+		static GLenum pmode[PS2_MAX_PRIMS];
+		static int pfirst[PS2_MAX_PRIMS], pcount[PS2_MAX_PRIMS];
+		int nv = 0, np = 0, one = alpha < 1;
 		float a8 = alpha * 255;
 
 		for ( i = 0; i < paliashdr->num_xyz; i++ )
@@ -256,6 +267,12 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 				vcol[i][k] = c8 <= 0 ? 0 : c8 >= 255 ? 255 : (int)c8;
 			}
 			vcol[i][3] = a8 <= 0 ? 0 : a8 >= 255 ? 255 : (int)a8;
+		}
+		/* opaque: the command list as it is, each vertex transformed once */
+		if (!one)
+		{
+			mxgl_DrawGlCmds( order, s_lerped[0], sizeof(s_lerped[0]), (unsigned *)vcol, paliashdr->num_xyz );
+			goto ps2_done;
 		}
 		qglEnableClientState( GL_VERTEX_ARRAY );
 		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -276,23 +293,38 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 				count = -count;
 				mode = GL_TRIANGLE_FAN;
 			}
-			if (count > MAX_VERTS)
-				count = MAX_VERTS;
+			if (count > PS2_MAX_CMDV)
+				count = PS2_MAX_CMDV;
+			if (nv + count > PS2_MAX_CMDV || np == PS2_MAX_PRIMS)
+			{
+				mxgl_MultiDraw( pmode, pfirst, pcount, np );
+				nv = np = 0;
+			}
 			for ( j = 0; j < count; j++, order += 3 )
 			{
 				index_xyz = order[2];
-				buf[j].xyz[0] = s_lerped[index_xyz][0];
-				buf[j].xyz[1] = s_lerped[index_xyz][1];
-				buf[j].xyz[2] = s_lerped[index_xyz][2];
-				buf[j].st[0] = ((float *)order)[0];
-				buf[j].st[1] = ((float *)order)[1];
-				*(unsigned *)buf[j].c = *(unsigned *)vcol[index_xyz];
+				buf[nv + j].xyz[0] = s_lerped[index_xyz][0];
+				buf[nv + j].xyz[1] = s_lerped[index_xyz][1];
+				buf[nv + j].xyz[2] = s_lerped[index_xyz][2];
+				buf[nv + j].st[0] = ((float *)order)[0];
+				buf[nv + j].st[1] = ((float *)order)[1];
+				*(unsigned *)buf[nv + j].c = *(unsigned *)vcol[index_xyz];
 			}
-			qglDrawArrays( mode, 0, count );
+			pmode[np] = mode, pfirst[np] = nv, pcount[np] = count;
+			np++, nv += count;
+			if (one)
+			{
+				mxgl_MultiDraw( pmode, pfirst, pcount, np );
+				nv = np = 0;
+			}
 		}
+		if (np)
+			mxgl_MultiDraw( pmode, pfirst, pcount, np );
 		qglDisableClientState( GL_VERTEX_ARRAY );
 		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
 		qglDisableClientState( GL_COLOR_ARRAY );
+ps2_done:
+		;
 	}
 #endif
 	else
