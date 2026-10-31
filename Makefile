@@ -15,9 +15,13 @@
 
 HERE     := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PS2MAX   ?= $(abspath $(HERE)/../..)
-MAXSDK   ?= $(PS2MAX)/libs/maxsdk
+# the hires branch: 1080i (maxsdk_gl's MXGL_HIRES on maxsdk's hires passes,
+# the maxsdk worktree of branch hires, built apart from maxsdk's master)
+MAXSDK   ?= $(PS2MAX)/libs/maxsdk-hires
+MAXSDK_OUT ?= $(PS2MAX)/build/libs/maxsdk-hires
 MXGL     ?= $(PS2MAX)/libs/maxsdk_gl
-OUT      ?= $(PS2MAX)/build/apps/maxsdk_quake2
+MXGL_HIRES ?= 1
+OUT      ?= $(PS2MAX)/build/apps/maxsdk_quake2-hires
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
 include $(MAXSDK)/mk/maxsdk.mk
@@ -33,7 +37,7 @@ P        := $(HERE)/ps2
 Q2CFLAGS  = $(filter-out -fno-common -ffreestanding -Wall -Wextra -Wno-unused-parameter -std=gnu11,$(CFLAGS)) \
             -std=gnu89 -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-int -Wno-error=return-type -MMD -fcommon -fno-strict-aliasing -ffast-math -fapprox-func \
             -cl-single-precision-constant -nostdlibinc -isystem $(PICOLIBC)/include \
-            -D__PS2__ -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) \
+            -D__PS2__ -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) $(MXGL_DEFS) \
             -include $(P)/ps2_stdio.h -include $(P)/ps2_math.h
 
 ENGINE   := client/cl_cin client/cl_ents client/cl_fx client/cl_input client/cl_inv \

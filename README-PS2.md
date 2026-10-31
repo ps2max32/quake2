@@ -28,3 +28,11 @@ the test end marker; `ARGS` is added to the command line.
 Not done: sound and CD audio (null drivers), cinematics are decoded but not tested,
 `Sys_FindFirst` (no save game list), network play. The textures of a room do not all fit
 in GS memory: they are copied in again each frame (`gl_picmip 1` avoids it).
+
+## Branch `hires`: 1080i
+
+This branch builds the 1920 x 1080 interlaced version (`$(OUT)` is
+`build/apps/maxsdk_quake2-hires`): maxsdk_gl with `MXGL_HIRES=1`, on the maxsdk worktree of
+branch `hires` (`libs/maxsdk-hires`, built into `build/libs/maxsdk-hires`). The game's
+window is 960 x 540 (its 2D twice as large), drawn at 1920 x 1080; textures at half size
+(`gl_picmip 1`) so a room's fit in GS memory, as each pass uploads the frame's textures again.

@@ -41,17 +41,25 @@ void VID_NewWindow(int width, int height) {
 	viddef.height = height;
 }
 
-/* one mode: maxsdk_gl's 640 x 448 */
+/* one mode: maxsdk_gl's 640 x 448 (MXGL_HIRES: the 960 x 540 window of
+   glimp_ps2.c) */
+#ifdef MXGL_HIRES
+#define WIN_W 960
+#define WIN_H 540
+#else
+#define WIN_W 640
+#define WIN_H 448
+#endif
 qboolean VID_GetModeInfo(int *width, int *height, int mode) {
-	*width = 640;
-	*height = 448;
+	*width = WIN_W;
+	*height = WIN_H;
 	return true;
 }
 
 void VID_Init(void) {
 	refimport_t ri;
-	viddef.width = 640;
-	viddef.height = 448;
+	viddef.width = WIN_W;
+	viddef.height = WIN_H;
 	ri.Cmd_AddCommand = Cmd_AddCommand;
 	ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
 	ri.Cmd_Argc = Cmd_Argc;
