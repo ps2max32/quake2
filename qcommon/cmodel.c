@@ -21,6 +21,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "qcommon.h"
 
+#ifdef __PS2__
+// the collision map's arrays for the maps of the game, not the largest the
+// format allows (5.5 MiB of 32): a larger map stops with "Map has too
+// many ..."
+#undef MAX_MAP_PLANES
+#define MAX_MAP_PLANES		16384
+#undef MAX_MAP_NODES
+#define MAX_MAP_NODES		16384
+#undef MAX_MAP_BRUSHSIDES
+#define MAX_MAP_BRUSHSIDES	32768
+#undef MAX_MAP_LEAFS
+#define MAX_MAP_LEAFS		16384
+#undef MAX_MAP_LEAFBRUSHES
+#define MAX_MAP_LEAFBRUSHES	32768
+#undef MAX_MAP_TEXINFO
+#define MAX_MAP_TEXINFO		4096
+#undef MAX_MAP_VISIBILITY
+#define MAX_MAP_VISIBILITY	0x60000
+#endif
+
 typedef struct
 {
 	cplane_t	*plane;

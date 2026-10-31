@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <assert.h>
 
 #include "gl_local.h"
+#ifdef __PS2__
+#include <mxgl.h>
+#endif
 
 static vec3_t	modelorg;		// relative to viewpoint
 
@@ -312,7 +315,25 @@ void DrawGLPolyChain( glpoly_t *p, float soffset, float toffset )
 ** This routine takes all the given light mapped surfaces in the world and
 ** blends them into the framebuffer.
 */
+static void R_BlendLightmaps_( void );
+
+#ifdef __PS2__
+/* the lightmaps up to 2x on the PS2 (as the software refresh, and GL with
+   hardware gamma): the GS multiplies by a brightness texture times 2 */
 void R_BlendLightmaps (void)
+{
+	mxgl_ColorShift( 1 );
+	R_BlendLightmaps_();
+	mxgl_ColorShift( 0 );
+}
+#else
+void R_BlendLightmaps (void)
+{
+	R_BlendLightmaps_();
+}
+#endif
+
+static void R_BlendLightmaps_ (void)
 {
 	int			i;
 	msurface_t	*surf, *newdrawsurf = 0;
@@ -1391,6 +1412,9 @@ static void LM_UploadBlock( qboolean dynamic )
 	}
 	else
 	{
+#ifdef __PS2__
+		mxgl_TexBrightness();	// the GS multiplies by it as Cd * As
+#endif
 		qglTexImage2D( GL_TEXTURE_2D, 
 					   0, 
 					   gl_lms.internal_format,
@@ -1637,6 +1661,9 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	GL_Bind( gl_state.lightmap_textures + 0 );
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifdef __PS2__
+	mxgl_TexBrightness();
+#endif
 	qglTexImage2D( GL_TEXTURE_2D, 
 				   0, 
 				   gl_lms.internal_format,

@@ -1338,6 +1338,7 @@ int R_Init( void *hinstance, void *hWnd )
 	err = qglGetError();
 	if ( err != GL_NO_ERROR )
 		ri.Con_Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
+	return 0;	// was missing: the caller takes -1 as failure
 }
 
 /*
