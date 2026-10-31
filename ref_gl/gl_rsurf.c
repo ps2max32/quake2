@@ -185,6 +185,10 @@ void DrawGLPoly (glpoly_t *p)
 	int		i;
 	float	*v;
 
+#ifdef __PS2__
+	(void)i, (void)v;
+	mxgl_DrawPolygon (p->verts[0], p->numverts, VERTEXSIZE, 3);
+#else
 	qglBegin (GL_POLYGON);
 	v = p->verts[0];
 	for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
@@ -193,6 +197,7 @@ void DrawGLPoly (glpoly_t *p)
 		qglVertex3fv (v);
 	}
 	qglEnd ();
+#endif
 }
 
 //============
@@ -280,6 +285,10 @@ void DrawGLPolyChain( glpoly_t *p, float soffset, float toffset )
 			float *v;
 			int j;
 
+#ifdef __PS2__
+			(void)j, (void)v;
+			mxgl_DrawPolygon (p->verts[0], p->numverts, VERTEXSIZE, 5);
+#else
 			qglBegin (GL_POLYGON);
 			v = p->verts[0];
 			for (j=0 ; j<p->numverts ; j++, v+= VERTEXSIZE)
@@ -288,6 +297,7 @@ void DrawGLPolyChain( glpoly_t *p, float soffset, float toffset )
 				qglVertex3fv (v);
 			}
 			qglEnd ();
+#endif
 		}
 	}
 	else

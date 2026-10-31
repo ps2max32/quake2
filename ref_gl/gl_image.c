@@ -19,6 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "gl_local.h"
+#ifdef __PS2__
+#include <mxgl.h>
+#endif
 
 image_t		gltextures[MAX_GLTEXTURES];
 int			numgltextures;
@@ -1359,6 +1362,32 @@ image_t	*GL_FindImage (char *name, imagetype_t type)
 	if (len<5)
 		return NULL;	//	ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
 
+#ifdef __PS2__
+	// a cache of the names looked up (the HUD's pics, every frame): a
+	// freed image's name is cleared, so a stale entry does not match
+	{
+		static image_t	*cache[256];
+		unsigned	h = 0;
+		const char	*c;
+		for (c = name ; *c ; c++)
+			h = h * 31 + (unsigned char)*c;
+		h &= 255;
+		if (cache[h] && !strcmp(name, cache[h]->name))
+		{
+			cache[h]->registration_sequence = registration_sequence;
+			return cache[h];
+		}
+		for (i=0, image=gltextures ; i<numgltextures ; i++,image++)
+		{
+			if (!strcmp(name, image->name))
+			{
+				image->registration_sequence = registration_sequence;
+				cache[h] = image;
+				return image;
+			}
+		}
+	}
+#else
 	// look for it
 	for (i=0, image=gltextures ; i<numgltextures ; i++,image++)
 	{
@@ -1368,6 +1397,7 @@ image_t	*GL_FindImage (char *name, imagetype_t type)
 			return image;
 		}
 	}
+#endif
 
 	//
 	// load the pic from disk
@@ -1547,6 +1577,22 @@ void	GL_InitImages (void)
 			j = 255;
 		intensitytable[i] = j;
 	}
+#ifdef __PS2__
+	/* the world's textures, made of the palette's colours through the
+	   intensity and gamma tables (GL_LightScaleTexture), are kept as 8-bit
+	   indices by maxsdk_gl */
+	{
+		byte	pal[768];
+		for (i=0 ; i<256 ; i++)
+		{
+			byte *c = (byte *)&d_8to24table[i];
+			pal[i*3+0] = gammatable[intensitytable[c[0]]];
+			pal[i*3+1] = gammatable[intensitytable[c[1]]];
+			pal[i*3+2] = gammatable[intensitytable[c[2]]];
+		}
+		mxgl_Palette (pal);
+	}
+#endif
 }
 
 /*

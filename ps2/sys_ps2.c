@@ -4,6 +4,7 @@
    into one object, Makefile), errors. */
 
 #include <mx/mx.h>
+#include <mx/prof.h>
 #include <mxgl.h>
 
 #include "../qcommon/qcommon.h"
@@ -153,8 +154,8 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
 #ifdef MXGL_HIRES
-	/* hires: a frame's texture uploads are done again in each pass, so the
-	   textures of a room must fit in GS memory (1.8 MiB): half size */
+	/* hires: the textures of a room must fit in GS memory (1.8 MiB): half
+	   size (at full size they are 1.8 MiB even as 8-bit indices) */
 #define PS2_PICMIP "+set gl_picmip 1 "
 #else
 #define PS2_PICMIP ""
@@ -184,7 +185,16 @@ int main(int argc, char **argv) {
 		frames = (int)mx_gs.frames;
 		if (frames % 60 == 0)
 			mx_printf("ps2: frame %d at %d ms\n", frames, newtime);
+#if PS2_PROF
+		/* the profile of the second half of the run */
+		if (PS2_FRAMES && frames == PS2_FRAMES / 2)
+			mx_prof_start(2000);
+#endif
 		if (PS2_FRAMES && frames >= PS2_FRAMES) {
+#if PS2_PROF
+			mx_prof_stop();
+			mx_prof_report(600);
+#endif
 			int r = mxgl_screenshot("host:quake2.tga");
 			mx_printf("ps2: %d frames, picture host:quake2.tga: %d\n", frames, r);
 			ps2_end(0);

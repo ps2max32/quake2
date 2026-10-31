@@ -35,4 +35,10 @@ This branch builds the 1920 x 1080 interlaced version (`$(OUT)` is
 `build/apps/maxsdk_quake2-hires`): maxsdk_gl with `MXGL_HIRES=1`, on the maxsdk worktree of
 branch `hires` (`libs/maxsdk-hires`, built into `build/libs/maxsdk-hires`). The game's
 window is 960 x 540 (its 2D twice as large), drawn at 1920 x 1080; textures at half size
-(`gl_picmip 1`) so a room's fit in GS memory, as each pass uploads the frame's textures again.
+(`gl_picmip 1`) so a room's fit in GS memory (at full size they are 1.8 MiB even as 8-bit).
+
+On the PS2 (2026-10-31): base1 at 50 to 53 fps, `demo1.dm2` at 43 to 60 (about 52 on
+average); no pass late. World polygons go through `mxgl_DrawPolygon`, models as vertex
+arrays (`glDrawArrays` of each strip and fan, `ref_gl/gl_mesh.c`), `GL_FindImage` has a
+name cache, the palette goes to maxsdk_gl after the intensity and gamma tables
+(`ref_gl/gl_image.c`). `make PROF=1` profiles the second half of a `FRAMES` run.

@@ -237,6 +237,64 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 		if ( qglUnlockArraysEXT != 0 )
 			qglUnlockArraysEXT();
 	}
+#ifdef __PS2__
+	/* each strip and fan as a vertex array of its own (one call, not three
+	   a vertex), each vertex lit once */
+	else if ( !( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) ) )
+	{
+		static struct { float xyz[3], st[2]; byte c[4]; } buf[MAX_VERTS];
+		static byte vcol[MAX_VERTS][4];
+		float a8 = alpha * 255;
+
+		for ( i = 0; i < paliashdr->num_xyz; i++ )
+		{
+			float c8, l = shadedots[verts[i].lightnormalindex] * 255;
+			int k;
+			for ( k = 0; k < 3; k++ )
+			{
+				c8 = l * shadelight[k];
+				vcol[i][k] = c8 <= 0 ? 0 : c8 >= 255 ? 255 : (int)c8;
+			}
+			vcol[i][3] = a8 <= 0 ? 0 : a8 >= 255 ? 255 : (int)a8;
+		}
+		qglEnableClientState( GL_VERTEX_ARRAY );
+		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+		qglEnableClientState( GL_COLOR_ARRAY );
+		qglVertexPointer( 3, GL_FLOAT, sizeof(buf[0]), buf[0].xyz );
+		qglTexCoordPointer( 2, GL_FLOAT, sizeof(buf[0]), buf[0].st );
+		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof(buf[0]), buf[0].c );
+		while (1)
+		{
+			GLenum	mode = GL_TRIANGLE_STRIP;
+			int		j;
+
+			count = *order++;
+			if (!count)
+				break;		// done
+			if (count < 0)
+			{
+				count = -count;
+				mode = GL_TRIANGLE_FAN;
+			}
+			if (count > MAX_VERTS)
+				count = MAX_VERTS;
+			for ( j = 0; j < count; j++, order += 3 )
+			{
+				index_xyz = order[2];
+				buf[j].xyz[0] = s_lerped[index_xyz][0];
+				buf[j].xyz[1] = s_lerped[index_xyz][1];
+				buf[j].xyz[2] = s_lerped[index_xyz][2];
+				buf[j].st[0] = ((float *)order)[0];
+				buf[j].st[1] = ((float *)order)[1];
+				*(unsigned *)buf[j].c = *(unsigned *)vcol[index_xyz];
+			}
+			qglDrawArrays( mode, 0, count );
+		}
+		qglDisableClientState( GL_VERTEX_ARRAY );
+		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
+		qglDisableClientState( GL_COLOR_ARRAY );
+	}
+#endif
 	else
 	{
 		while (1)
