@@ -1,7 +1,7 @@
 /* qgl_ps2.c: ref_gl's qgl* function pointers (ref_gl/qgl.h) on
-   maxsdk_gl (libs/maxsdk_gl): its gl* functions, and for the others a
+   libgl (libs/libgl): its gl* functions, and for the others a
    function that says, once, that one was called. Made from qgl.h by a
-   script (the list of what maxsdk_gl has is its gl* functions). */
+   script (the list of what libgl has is its gl* functions). */
 
 #include "../ref_gl/gl_local.h"
 
@@ -356,7 +356,7 @@ static int missing(void) {
 	return 0;
 }
 
-/* the GL calls of maxsdk_gl that <GL/gl.h> does not declare */
+/* the GL calls of libgl that <GL/gl.h> does not declare */
 void APIENTRY glLockArraysEXT(GLint first, GLsizei count);
 void APIENTRY glUnlockArraysEXT(void);
 

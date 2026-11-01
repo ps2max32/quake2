@@ -10,7 +10,7 @@ table `>> 3`, as the x86 assembly: id's `>> 11` mixed every 8-bit sound silent).
 `makefile.rhapsody`, so that `make` finds `Makefile`.
 
 ```
-make [FRAMES=n] [ARGS="+map base1"]    $(OUT)/quake2.elf (build/apps/maxsdk_quake2)
+make [FRAMES=n] [ARGS="+map base1"]    $(OUT)/quake2.elf (build/apps/quake2)
 make run                               copies the retail baseq2/pak0..2 (Q2DATA) to
                                        build/pcsx2-test/baseq2 and runs it in PCSX2
 ```
@@ -20,9 +20,9 @@ the test end marker; `ARGS` is added to the command line.
 
 | Part | How |
 |---|---|
-| Refresh | `ref_gl` on `libs/maxsdk_gl`: `ps2/qgl_ps2.c` (the `qgl*` pointers, made from `qgl.h`), `ps2/glimp_ps2.c`; lightmaps are brightness textures the GS multiplies by (`Cd * As`), up to 2x: monochrome |
+| Refresh | `ref_gl` on `libs/libgl`: `ps2/qgl_ps2.c` (the `qgl*` pointers, made from `qgl.h`), `ps2/glimp_ps2.c`; lightmaps are brightness textures the GS multiplies by (`Cd * As`), up to 2x: monochrome |
 | Modules | `game/` and `ref_gl/` each linked into one object, symbols local but `GetGameAPI` / `GetRefAPI` (`game_` / `ref_` in front); `Sys_GetGameAPI` and `VID_Init` call them |
-| Memory | maxsdk's virtual memory (`mx_vm_config` in `ps2/sys_ps2.c`): `malloc` in up to 128 MiB, paged to `host:quake2.swp`; `Hunk_Begin` takes what it is asked for (pages not used are not touched, as Linux's `mmap`), `Hunk_End` gives the rest back (realloc in place); a core heap of 12 MiB for maxsdk_gl (what the GS reads by DMA); stack 1 MiB. In PCSX2 only on the EE interpreter (`PCSX2_EE=interp`) |
+| Memory | maxsdk's virtual memory (`mx_vm_config` in `ps2/sys_ps2.c`): `malloc` in up to 128 MiB, paged to `host:quake2.swp`; `Hunk_Begin` takes what it is asked for (pages not used are not touched, as Linux's `mmap`), `Hunk_End` gives the rest back (realloc in place); a core heap of 12 MiB for libgl (what the GS reads by DMA); stack 1 MiB. In PCSX2 only on the EE interpreter (`PCSX2_EE=interp`) |
 | Files | stdio on the IOP file server (`host:`), `ps2/ps2_file.c`; `+set basedir host:` |
 | Sound | id's mixer (`client/snd_dma.c`, `snd_mix.c`) at `s_khz` (11025 Hz by default: the sounds are kept in memory at that rate) 16-bit stereo into a ring, sent to maxsdk's PCM stream (`mx/snd.h`, audsrv) by `ps2/snddma_ps2.c` as far as the mixer has painted |
 | Network | loopback only (`ps2/net_ps2.c`) |
@@ -46,7 +46,7 @@ On the PS2 (2026-10-31, the 1080i-only build before the switch): `demo1.dm2` at 
 fps, a few seconds of the fight at 55 to 58; no pass late. World polygons go through
 `mxgl_DrawPolygon`, opaque models through `mxgl_DrawGlCmds`, translucent ones through
 `mxgl_MultiDraw` (`ref_gl/gl_mesh.c`), particles as one vertex array, the BSP walk passes
-the frustum planes down; `GL_FindImage` has a name cache, the palette goes to maxsdk_gl
+the frustum planes down; `GL_FindImage` has a name cache, the palette goes to libgl
 after the intensity and gamma tables (`ref_gl/gl_image.c`). `make PROF=1` profiles the
 second half of a `FRAMES` run; `PROF=<t>` (ms) the game time t .. t + 1 s (a demo's, the
 same in every run; `ps2: frame` lines show it), and ends there.

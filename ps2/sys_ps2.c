@@ -136,7 +136,7 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 
 /* maxsdk's virtual memory (<mx/vm.h>): malloc (the hunks, the zone, the
    sounds) in up to 128 MiB, paged to a swap file next to the game's data;
-   the core heap holds what the GS reads by DMA (maxsdk_gl: arenas,
+   the core heap holds what the GS reads by DMA (libgl: arenas,
    textures) */
 const struct mx_vm_config mx_vm_config = {
 	.swap = "host:quake2.swp",

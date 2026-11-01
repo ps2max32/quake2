@@ -1,5 +1,5 @@
-/* glimp_ps2.c: the GLimp_* functions of ref_gl on maxsdk_gl
-   (libs/maxsdk_gl): the TV's screen (NTSC 640 x 448, PAL 640 x 512), or
+/* glimp_ps2.c: the GLimp_* functions of ref_gl on libgl
+   (libs/libgl): the TV's screen (NTSC 640 x 448, PAL 640 x 512), or
    1080i with vid_hires 1, the game's window 960 x 540 then (its 2D, in
    pixels, twice as large on the screen). The mode is set as the refresh
    starts (vid_ps2.c restarts it when vid_hires changes). */

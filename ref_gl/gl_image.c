@@ -1580,7 +1580,7 @@ void	GL_InitImages (void)
 #ifdef __PS2__
 	/* the world's textures, made of the palette's colours through the
 	   intensity and gamma tables (GL_LightScaleTexture), are kept as 8-bit
-	   indices by maxsdk_gl */
+	   indices by libgl */
 	{
 		byte	pal[768];
 		for (i=0 ; i<256 ; i++)

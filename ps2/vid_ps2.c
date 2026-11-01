@@ -1,5 +1,5 @@
 /* vid_ps2.c: the video and input of Quake 2 on maxsdk: the GL refresh
-   (ref_gl, linked in: ref_GetRefAPI) on maxsdk_gl, and pad 0. From
+   (ref_gl, linked in: ref_GetRefAPI) on libgl, and pad 0. From
    null/vid_null.c. */
 
 #include <mx/mx.h>

@@ -9,7 +9,7 @@
 # the GL refresh (ref_gl/) built natively: each of these two is linked into
 # one object whose symbols are local except GetGameAPI / GetRefAPI, renamed
 # game_GetGameAPI / ref_GetRefAPI (their copies of q_shared.c, Com_Printf
-# and Sys_Error do not clash). The refresh draws through libs/maxsdk_gl
+# and Sys_Error do not clash). The refresh draws through libs/libgl
 # (ps2/qgl_ps2.c, ps2/glimp_ps2.c). Sound is id's mixer on maxsdk's
 # mx/snd.h stream (ps2/snddma_ps2.c); CD audio is id's null driver, the
 # network the loopback (ps2/net_ps2.c).
@@ -17,12 +17,12 @@
 HERE     := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PS2MAX   ?= $(abspath $(HERE)/../..)
 MAXSDK   ?= $(PS2MAX)/libs/maxsdk
-MXGL     ?= $(PS2MAX)/libs/maxsdk_gl
-OUT      ?= $(PS2MAX)/build/apps/maxsdk_quake2
+MXGL     ?= $(PS2MAX)/libs/libgl
+OUT      ?= $(PS2MAX)/build/apps/quake2
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
 include $(MAXSDK)/mk/maxsdk.mk
-# MX_MEMORY=vm (started by mxload.elf): Quake 2 in VM, maxsdk_gl in core
+# MX_MEMORY=vm (started by mxload.elf): Quake 2 in VM, libgl in core
 MX_CORE_OBJS = $(MXGL_OBJS)
 
 PICOLIBC ?= $(PS2MAX)/build/libs/picolibc/install
