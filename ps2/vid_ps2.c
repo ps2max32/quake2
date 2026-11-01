@@ -4,6 +4,7 @@
 
 #include <mx/mx.h>
 #include <mx/pad.h>
+#include <mxgl.h>
 
 #include "../client/client.h"
 #include "../client/qmenu.h"
@@ -52,7 +53,7 @@ qboolean VID_GetModeInfo(int *width, int *height, int mode) {
 
 /* vid_hires 1: 1080i (glimp_ps2.c), with the textures at half size
    (gl_picmip 1): a room's do not fit in GS memory at full size (1.8 MiB
-   even as 8-bit indices), and the memory 1080i takes is what they leave */
+   even as 8-bit indices), with 1080i's buffer in it */
 static cvar_t *vid_ref, *vid_hires;
 static void VID_HiresPicmip(void) {
 	Cvar_SetValue("gl_picmip", vid_hires->value == 1);
@@ -226,6 +227,9 @@ void Sys_SendKeyEvents(void) {
 			if ((held ^ last) & b)
 				Key_Event(pad_keys[i].key, (held & b) != 0, t);
 		}
+		/* R3 (the right stick pressed): the counters on and off */
+		if (held & ~last & MX_PAD_R3)
+			mxgl_show_stats = !mxgl_show_stats;
 		last = held;
 		u8 st[4];
 		if (mx_pad_sticks(0, st))

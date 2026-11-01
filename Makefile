@@ -22,6 +22,8 @@ OUT      ?= $(PS2MAX)/build/apps/maxsdk_quake2
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
 include $(MAXSDK)/mk/maxsdk.mk
+# MX_MEMORY=vm (started by mxload.elf): Quake 2 in VM, maxsdk_gl in core
+MX_CORE_OBJS = $(MXGL_OBJS)
 
 PICOLIBC ?= $(PS2MAX)/build/libs/picolibc/install
 LIBC_LIBS = $(MAXSDK_OUT)/libc/glue.c.o $(MAXSDK_OUT)/libmxc.a $(PICOLIBC)/lib/libc.a \

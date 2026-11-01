@@ -5,6 +5,7 @@
 
 #include <mx/mx.h>
 #include <mx/prof.h>
+#include <mx/vm.h>
 #include <mxgl.h>
 
 #include "../qcommon/qcommon.h"
@@ -72,35 +73,17 @@ int Sys_Milliseconds(void) {
 	return curtime;
 }
 
-/* ---- the hunk: as much as asked for, or as much as there is; Hunk_End
-   gives the rest back (realloc to the size used) ---------------------- */
+/* ---- the hunk: as much as asked for (virtual memory: the pages not
+   used are never touched, as Linux's mmap), Hunk_End gives the rest back
+   (realloc to the size used, in place) ---------------------------------- */
 
 static byte *membase;
 static int maxhunksize, curhunksize;
 
-/* the largest block malloc gives (in steps of 64 KiB) */
-static int largest_free(void) {
-	int lo = 0, hi = 32 << 20;
-	while (hi - lo > 64 * 1024) {
-		int mid = (lo + hi) / 2;
-		void *volatile p = malloc(mid); /* volatile: not optimised away */
-		if (p)
-			free(p), lo = mid;
-		else
-			hi = mid;
-	}
-	return lo;
-}
-
-/* what loading needs from malloc while a hunk is open (the file being
-   read, its pak buffers, textures) */
-#define HUNK_HEADROOM (3 << 20)
-
 void *Hunk_Begin(int maxsize) {
-	int room = largest_free() - HUNK_HEADROOM;
-	maxhunksize = maxsize < room ? maxsize : room;
+	maxhunksize = maxsize;
 	curhunksize = 0;
-	membase = maxhunksize > 0 ? malloc(maxhunksize + 32) : NULL;
+	membase = malloc(maxhunksize + 32);
 	if (!membase)
 		Sys_Error("Hunk_Begin: no memory for %d bytes", maxsize);
 	*(int *)membase = maxhunksize;
@@ -117,11 +100,9 @@ void *Hunk_Alloc(int size) {
 }
 
 int Hunk_End(void) {
-	/* in place: picolibc's realloc frees the end of a block it shrinks */
+	/* in place: libmxc's realloc frees the end of a block it shrinks */
 	if (realloc(membase, curhunksize + 32) != membase)
 		Sys_Error("Hunk_End: the block moved");
-	if (curhunksize > 1 << 20)
-		mx_printf("ps2: hunk %d KiB, %d KiB free after\n", curhunksize >> 10, largest_free() >> 10);
 	return curhunksize;
 }
 
@@ -153,6 +134,15 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 
 /* ---- main ------------------------------------------------------------------------- */
 
+/* maxsdk's virtual memory (<mx/vm.h>): malloc (the hunks, the zone, the
+   sounds) in up to 128 MiB, paged to a swap file next to the game's data;
+   the core heap holds what the GS reads by DMA (maxsdk_gl: arenas,
+   textures) */
+const struct mx_vm_config mx_vm_config = {
+	.swap = "host:quake2.swp",
+	.core_heap = MXGL_CORE_BYTES + (6u << 20),
+};
+
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
 	static char line[512] = "quake2 +set basedir host: +set vid_ref gl "
@@ -161,8 +151,7 @@ int main(int argc, char **argv) {
 	int n = 0;
 	for (char *p = strtok(line, " "); p && n < 63; p = strtok(NULL, " "))
 		args[n++] = p;
-	mx_printf("Quake 2 on maxsdk: heap %p..%p, %d KiB free\n", mx_heap_start(), mx_heap_end(),
-	          largest_free() >> 10);
+	mx_printf("Quake 2 on maxsdk: virtual memory %s\n", mx_vm_active() ? "on" : "off");
 	Qcommon_Init(n, args);
 
 	int oldtime = Sys_Milliseconds(), frames = 0;
