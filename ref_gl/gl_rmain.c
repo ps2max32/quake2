@@ -19,6 +19,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // r_main.c
 #include "gl_local.h"
+#ifdef __PS2__
+#include <mxgl.h>
+/* the platform's GetProcAddress: libgl's */
+#define qwglGetProcAddress(name) ((void *)mxglGetProcAddress (name))
+#endif
 
 void R_Clear (void);
 
@@ -433,6 +438,9 @@ void GL_DrawParticles( int num_particles, const particle_t particles[], const un
 		qglEnableClientState( GL_VERTEX_ARRAY );
 		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
 		qglEnableClientState( GL_COLOR_ARRAY );
+#ifdef __PS2__
+		{ extern int ps2_world_st; ps2_world_st = -1; }
+#endif
 		qglVertexPointer( 3, GL_FLOAT, sizeof(pv[0]), pv[0].xyz );
 		qglTexCoordPointer( 2, GL_FLOAT, sizeof(pv[0]), pv[0].st );
 		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof(pv[0]), pv[0].c );
@@ -1303,7 +1311,7 @@ int R_Init( void *hinstance, void *hWnd )
 	/*
 	** grab extensions
 	*/
-#ifdef WIN32
+#if defined(WIN32) || defined(__PS2__)
 	if ( strstr( gl_config.extensions_string, "GL_EXT_compiled_vertex_array" ) || 
 		 strstr( gl_config.extensions_string, "GL_SGI_compiled_vertex_array" ) )
 	{
@@ -1316,6 +1324,7 @@ int R_Init( void *hinstance, void *hWnd )
 		ri.Con_Printf( PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" );
 	}
 
+#ifdef WIN32
 	if ( strstr( gl_config.extensions_string, "WGL_EXT_swap_control" ) )
 	{
 		qwglSwapIntervalEXT = ( BOOL (WINAPI *)(int)) qwglGetProcAddress( "wglSwapIntervalEXT" );
@@ -1325,6 +1334,7 @@ int R_Init( void *hinstance, void *hWnd )
 	{
 		ri.Con_Printf( PRINT_ALL, "...WGL_EXT_swap_control not found\n" );
 	}
+#endif
 
 	if ( strstr( gl_config.extensions_string, "GL_EXT_point_parameters" ) )
 	{

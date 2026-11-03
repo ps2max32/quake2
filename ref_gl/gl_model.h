@@ -89,6 +89,9 @@ typedef struct glpoly_s
 	struct	glpoly_s	*chain;
 	int		numverts;
 	int		flags;			// for SURF_UNDERWATER (not needed anymore?)
+#ifdef __PS2__
+	int		ps2_first;		// 1 + its first vertex in the world's buffer object, 0: none
+#endif
 	float	verts[4][VERTEXSIZE];	// variable sized (xyz s1t1 s2t2)
 } glpoly_t;
 
@@ -240,6 +243,15 @@ typedef struct model_s
 
 	int			extradatasize;
 	void		*extradata;
+
+#ifdef __PS2__
+	/* an alias model's command list as an index list (Mod_LoadAliasModel):
+	   its vertices (xyz index, s, t) once each, and the triangles of its
+	   strips and fans in their order */
+	int			ps2_nv, ps2_ni;
+	unsigned short	*ps2_xyz, *ps2_idx;
+	float		(*ps2_st)[2];
+#endif
 } model_t;
 
 //============================================================================

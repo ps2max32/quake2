@@ -921,6 +921,76 @@ ALIAS MODELS
 ==============================================================================
 */
 
+#ifdef __PS2__
+/* the command list as an index list: each (xyz index, s, t) once, and the
+   triangles of the strips and fans in their order (a strip's odd ones the
+   other way round, as GL draws them), drawn with glDrawRangeElements */
+static void Mod_PS2_IndexGlCmds (model_t *mod, dmdl_t *h)
+{
+	int		*cmd = (int *)((byte *)h + h->ofs_glcmds), *c;
+	int		total = 0, ntri = 0, count, i, nv = 0, ni = 0;
+	int		*head, *next, *vix;
+	unsigned short	*xyz, *idx;
+	float	(*st)[2];
+
+	for (c = cmd; (count = *c++) != 0; c += 3 * abs(count))
+	{
+		total += abs(count);
+		ntri += abs(count) - 2;
+	}
+	mod->ps2_nv = mod->ps2_ni = 0;
+	if (total <= 0 || total > 65535)
+		return;
+	head = malloc (h->num_xyz * sizeof(int));
+	next = malloc (total * sizeof(int));
+	vix = malloc (total * sizeof(int));
+	xyz = Hunk_Alloc (total * sizeof(*xyz));
+	st = Hunk_Alloc (total * sizeof(*st));
+	idx = Hunk_Alloc (ntri * 3 * sizeof(*idx));
+	if (!head || !next || !vix)
+	{
+		free (head), free (next), free (vix);
+		return;
+	}
+	for (i = 0; i < h->num_xyz; i++)
+		head[i] = -1;
+	for (c = cmd; (count = *c++) != 0; )
+	{
+		int fan = count < 0, n = abs(count), k;
+		for (k = 0; k < n; k++, c += 3)
+		{
+			/* the same xyz with the same s, t: the same vertex */
+			int x = c[2], v;
+			for (v = head[x]; v >= 0; v = next[v])
+				if (st[v][0] == ((float *)c)[0] && st[v][1] == ((float *)c)[1])
+					break;
+			if (v < 0)
+			{
+				v = nv++;
+				xyz[v] = x;
+				st[v][0] = ((float *)c)[0], st[v][1] = ((float *)c)[1];
+				next[v] = head[x], head[x] = v;
+			}
+			vix[k] = v;
+		}
+		for (k = 0; k + 2 < n; k++)
+		{
+			if (fan)
+				idx[ni] = vix[0], idx[ni + 1] = vix[k + 1];
+			else if (k & 1)
+				idx[ni] = vix[k + 1], idx[ni + 1] = vix[k];
+			else
+				idx[ni] = vix[k], idx[ni + 1] = vix[k + 1];
+			idx[ni + 2] = vix[k + 2];
+			ni += 3;
+		}
+	}
+	free (head), free (next), free (vix);
+	mod->ps2_nv = nv, mod->ps2_ni = ni;
+	mod->ps2_xyz = xyz, mod->ps2_st = st, mod->ps2_idx = idx;
+}
+#endif
+
 /*
 =================
 Mod_LoadAliasModel
@@ -1026,6 +1096,9 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	poutcmd = (int *) ((byte *)pheader + pheader->ofs_glcmds);
 	for (i=0 ; i<pheader->num_glcmds ; i++)
 		poutcmd[i] = LittleLong (pincmd[i]);
+#ifdef __PS2__
+	Mod_PS2_IndexGlCmds (mod, pheader);
+#endif
 
 
 	// register all skins
@@ -1118,6 +1191,12 @@ void R_BeginRegistration (char *model)
 	if ( strcmp(mod_known[0].name, fullname) || flushmap->value)
 		Mod_Free (&mod_known[0]);
 	r_worldmodel = Mod_ForName(fullname, true);
+#ifdef __PS2__
+	{
+		void PS2_BuildWorldBuffer (model_t *m);
+		PS2_BuildWorldBuffer (r_worldmodel);
+	}
+#endif
 
 	r_viewcluster = -1;
 }

@@ -19,9 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "gl_local.h"
-#ifdef __PS2__
-#include <mxgl.h>
-#endif
 
 image_t		gltextures[MAX_GLTEXTURES];
 int			numgltextures;
@@ -1578,9 +1575,9 @@ void	GL_InitImages (void)
 		intensitytable[i] = j;
 	}
 #ifdef __PS2__
-	/* the world's textures, made of the palette's colours through the
-	   intensity and gamma tables (GL_LightScaleTexture), are kept as 8-bit
-	   indices by libgl */
+	/* the shared palette (GL_EXT_shared_texture_palette): the palette's
+	   colours through the intensity and gamma tables (GL_LightScaleTexture),
+	   of which the world's textures are: libgl keeps them as 8-bit indices */
 	{
 		byte	pal[768];
 		for (i=0 ; i<256 ; i++)
@@ -1590,7 +1587,11 @@ void	GL_InitImages (void)
 			pal[i*3+1] = gammatable[intensitytable[c[1]]];
 			pal[i*3+2] = gammatable[intensitytable[c[2]]];
 		}
-		mxgl_Palette (pal);
+		if ( strstr( gl_config.extensions_string, "GL_EXT_shared_texture_palette" ) )
+		{
+			glColorTableEXT( GL_SHARED_TEXTURE_PALETTE_EXT, GL_RGB, 256, GL_RGB, GL_UNSIGNED_BYTE, pal );
+			qglEnable( GL_SHARED_TEXTURE_PALETTE_EXT );
+		}
 	}
 #endif
 }

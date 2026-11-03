@@ -20,9 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // gl_mesh.c: triangle model functions
 
 #include "gl_local.h"
-#ifdef __PS2__
-#include <mxgl.h>
-#endif
 
 /*
 =============================================================
@@ -176,6 +173,9 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 		float colorArray[MAX_VERTS*4];
 
 		qglEnableClientState( GL_VERTEX_ARRAY );
+#ifdef __PS2__
+		{ extern int ps2_world_st; ps2_world_st = -1; }
+#endif
 		qglVertexPointer( 3, GL_FLOAT, 16, s_lerped );	// padded for SIMD
 
 //		if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) )
@@ -258,22 +258,21 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 			qglUnlockArraysEXT();
 	}
 #ifdef __PS2__
-	/* each strip and fan as a vertex array of its own (one call, not three
-	   a vertex), each vertex lit once */
+	/* the model in one draw (not three calls a vertex), each vertex lit once */
 	else if ( !( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) ) )
 	{
-		/* all of a model's strips and fans in one array, drawn in one call
-		   (mxgl_MultiDraw); a translucent one a primitive at a time, in
-		   order */
+		/* the model's command list as one index list (Mod_PS2_IndexGlCmds):
+		   its vertices' lerped positions and colours, one glDrawRangeElements
+		   (the triangles in the list's order: right for translucent ones too) */
 #define PS2_MAX_CMDV 4096
-#define PS2_MAX_PRIMS 512
-		static struct { float xyz[3], st[2]; byte c[4]; } buf[PS2_MAX_CMDV];
+		/* one record a vertex (libgl takes its words from one place) */
+		static struct { float xyz[3], st[2]; unsigned c; } buf[PS2_MAX_CMDV];
 		static byte vcol[MAX_VERTS][4] __attribute__((aligned(4)));
-		static GLenum pmode[PS2_MAX_PRIMS];
-		static int pfirst[PS2_MAX_PRIMS], pcount[PS2_MAX_PRIMS];
-		int nv = 0, np = 0, one = alpha < 1;
+		model_t *m = currentmodel;
 		float a8 = alpha * 255;
 
+		if ( !m->ps2_ni || m->ps2_nv > PS2_MAX_CMDV )
+			goto ps2_other;
 		/* a vertex's colour depends only on its normal's index (a byte):
 		   with more vertices than indices, each index's colour once and a
 		   word a vertex */
@@ -294,67 +293,36 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 		if ( lit == ncol )
 			for ( i = 0; i < paliashdr->num_xyz; i++ )
 				*(unsigned *)vcol[i] = *(unsigned *)ncol[verts[i].lightnormalindex];
-		/* opaque: the command list as it is, each vertex transformed once */
-		if (!one)
+		for ( i = 0; i < m->ps2_nv; i++ )
 		{
-			mxgl_DrawGlCmds( order, s_lerped[0], sizeof(s_lerped[0]), (unsigned *)vcol, paliashdr->num_xyz );
-			goto ps2_done;
+			int x = m->ps2_xyz[i];
+			buf[i].xyz[0] = s_lerped[x][0];
+			buf[i].xyz[1] = s_lerped[x][1];
+			buf[i].xyz[2] = s_lerped[x][2];
+			buf[i].st[0] = m->ps2_st[i][0];
+			buf[i].st[1] = m->ps2_st[i][1];
+			buf[i].c = *(unsigned *)vcol[x];
 		}
 		qglEnableClientState( GL_VERTEX_ARRAY );
 		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
 		qglEnableClientState( GL_COLOR_ARRAY );
+#ifdef __PS2__
+		{ extern int ps2_world_st; ps2_world_st = -1; }
+#endif
 		qglVertexPointer( 3, GL_FLOAT, sizeof(buf[0]), buf[0].xyz );
 		qglTexCoordPointer( 2, GL_FLOAT, sizeof(buf[0]), buf[0].st );
-		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof(buf[0]), buf[0].c );
-		while (1)
-		{
-			GLenum	mode = GL_TRIANGLE_STRIP;
-			int		j;
-
-			count = *order++;
-			if (!count)
-				break;		// done
-			if (count < 0)
-			{
-				count = -count;
-				mode = GL_TRIANGLE_FAN;
-			}
-			if (count > PS2_MAX_CMDV)
-				count = PS2_MAX_CMDV;
-			if (nv + count > PS2_MAX_CMDV || np == PS2_MAX_PRIMS)
-			{
-				mxgl_MultiDraw( pmode, pfirst, pcount, np );
-				nv = np = 0;
-			}
-			for ( j = 0; j < count; j++, order += 3 )
-			{
-				index_xyz = order[2];
-				buf[nv + j].xyz[0] = s_lerped[index_xyz][0];
-				buf[nv + j].xyz[1] = s_lerped[index_xyz][1];
-				buf[nv + j].xyz[2] = s_lerped[index_xyz][2];
-				buf[nv + j].st[0] = ((float *)order)[0];
-				buf[nv + j].st[1] = ((float *)order)[1];
-				*(unsigned *)buf[nv + j].c = *(unsigned *)vcol[index_xyz];
-			}
-			pmode[np] = mode, pfirst[np] = nv, pcount[np] = count;
-			np++, nv += count;
-			if (one)
-			{
-				mxgl_MultiDraw( pmode, pfirst, pcount, np );
-				nv = np = 0;
-			}
-		}
-		if (np)
-			mxgl_MultiDraw( pmode, pfirst, pcount, np );
+		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof(buf[0]), &buf[0].c );
+		glDrawRangeElements( GL_TRIANGLES, 0, m->ps2_nv - 1, m->ps2_ni, GL_UNSIGNED_SHORT, m->ps2_idx );
 		qglDisableClientState( GL_VERTEX_ARRAY );
 		qglDisableClientState( GL_TEXTURE_COORD_ARRAY );
 		qglDisableClientState( GL_COLOR_ARRAY );
-ps2_done:
-		;
 	}
 #endif
 	else
 	{
+#ifdef __PS2__
+ps2_other:
+#endif
 		while (1)
 		{
 			// get the vertex count and primitive type

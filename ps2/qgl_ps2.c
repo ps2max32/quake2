@@ -704,9 +704,12 @@ qboolean QGL_Init(const char *dllname) {
 	qglUnlockArraysEXT = glUnlockArraysEXT;
 	qglMTexCoord2fSGIS = (void *)missing;
 	qglSelectTextureSGIS = (void *)missing;
-	/* the extensions are not offered (GL_EXTENSIONS is empty) */
+	/* the extensions: as R_Init finds them in GL_EXTENSIONS (by
+	   qwglGetProcAddress, libgl's mxglGetProcAddress) */
 	qglLockArraysEXT = NULL;
+	qglUnlockArraysEXT = NULL;
 	qglPointParameterfEXT = NULL;
+	qglPointParameterfvEXT = NULL;
 	qglColorTableEXT = NULL;
 	qglSelectTextureSGIS = NULL;
 	qglMTexCoord2fSGIS = NULL;

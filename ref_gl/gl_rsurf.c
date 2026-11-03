@@ -22,7 +22,70 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gl_local.h"
 #ifdef __PS2__
-#include <mxgl.h>
+/* The world's polygons (glpoly_t: x, y, z, s, t, lightmap s, t) in one
+   buffer object, made when the map is loaded (PS2_BuildWorldBuffer); the
+   arrays point into it while ps2_world_st is the texture coordinates'
+   offset (3, or 5 for the lightmap's): -1 when other code set its own */
+static GLuint ps2_world_buf;
+int ps2_world_st = -1;
+
+void PS2_BuildWorldBuffer (model_t *m)
+{
+	int		i, n = 0;
+	float	*v, *d;
+
+	for (i=0 ; i<m->numsurfaces ; i++)
+		if (m->surfaces[i].polys && !(m->surfaces[i].flags & (SURF_DRAWTURB|SURF_DRAWSKY)))
+			n += m->surfaces[i].polys->numverts;
+	if (!ps2_world_buf)
+		glGenBuffers (1, &ps2_world_buf);
+	ps2_world_st = -1;
+	d = v = malloc (n * VERTEXSIZE * sizeof(float) + 4);
+	if (!v)
+		return;
+	n = 0;
+	for (i=0 ; i<m->numsurfaces ; i++)
+	{
+		glpoly_t *p = m->surfaces[i].polys;
+		if (!p || (m->surfaces[i].flags & (SURF_DRAWTURB|SURF_DRAWSKY)))
+			continue;
+		memcpy (d, p->verts, p->numverts * VERTEXSIZE * sizeof(float));
+		d += p->numverts * VERTEXSIZE;
+		p->ps2_first = 1 + n;
+		n += p->numverts;
+	}
+	glBindBuffer (GL_ARRAY_BUFFER, ps2_world_buf);
+	glBufferData (GL_ARRAY_BUFFER, n * VERTEXSIZE * sizeof(float), v, GL_STATIC_DRAW);
+	glBindBuffer (GL_ARRAY_BUFFER, 0);
+	free (v);
+}
+
+/* a polygon: from the world's buffer object if it is in it, else from its
+   own vertices; st the offset of the texture coordinates */
+static void PS2_DrawPoly (glpoly_t *p, int st)
+{
+	if (p->ps2_first)
+	{
+		if (ps2_world_st != st)
+		{
+			qglEnableClientState (GL_VERTEX_ARRAY);
+			qglEnableClientState (GL_TEXTURE_COORD_ARRAY);
+			glBindBuffer (GL_ARRAY_BUFFER, ps2_world_buf);
+			qglVertexPointer (3, GL_FLOAT, VERTEXSIZE * sizeof(float), (void *)0);
+			qglTexCoordPointer (2, GL_FLOAT, VERTEXSIZE * sizeof(float), (void *)(st * sizeof(float)));
+			glBindBuffer (GL_ARRAY_BUFFER, 0);
+			ps2_world_st = st;
+		}
+		qglDrawArrays (GL_POLYGON, p->ps2_first - 1, p->numverts);
+		return;
+	}
+	ps2_world_st = -1;
+	qglEnableClientState (GL_VERTEX_ARRAY);
+	qglEnableClientState (GL_TEXTURE_COORD_ARRAY);
+	qglVertexPointer (3, GL_FLOAT, VERTEXSIZE * sizeof(float), p->verts[0]);
+	qglTexCoordPointer (2, GL_FLOAT, VERTEXSIZE * sizeof(float), &p->verts[0][st]);
+	qglDrawArrays (GL_POLYGON, 0, p->numverts);
+}
 #endif
 
 static vec3_t	modelorg;		// relative to viewpoint
@@ -187,7 +250,7 @@ void DrawGLPoly (glpoly_t *p)
 
 #ifdef __PS2__
 	(void)i, (void)v;
-	mxgl_DrawPolygon (p->verts[0], p->numverts, VERTEXSIZE, 3);
+	PS2_DrawPoly (p, 3);
 #else
 	qglBegin (GL_POLYGON);
 	v = p->verts[0];
@@ -287,7 +350,7 @@ void DrawGLPolyChain( glpoly_t *p, float soffset, float toffset )
 
 #ifdef __PS2__
 			(void)j, (void)v;
-			mxgl_DrawPolygon (p->verts[0], p->numverts, VERTEXSIZE, 5);
+			PS2_DrawPoly (p, 5);
 #else
 			qglBegin (GL_POLYGON);
 			v = p->verts[0];
@@ -329,12 +392,15 @@ static void R_BlendLightmaps_( void );
 
 #ifdef __PS2__
 /* the lightmaps up to 2x on the PS2 (as the software refresh, and GL with
-   hardware gamma): the GS multiplies by a brightness texture times 2 */
+   hardware gamma): GL_COMBINE's RGB_SCALE 2 (the texture chains leave the
+   environment at GL_REPLACE, which it is again after) */
 void R_BlendLightmaps (void)
 {
-	mxgl_ColorShift( 1 );
+	GL_TexEnv( GL_COMBINE );
+	qglTexEnvf( GL_TEXTURE_ENV, GL_RGB_SCALE, 2 );
 	R_BlendLightmaps_();
-	mxgl_ColorShift( 0 );
+	qglTexEnvf( GL_TEXTURE_ENV, GL_RGB_SCALE, 1 );
+	GL_TexEnv( GL_REPLACE );
 }
 #else
 void R_BlendLightmaps (void)
@@ -1458,9 +1524,6 @@ static void LM_UploadBlock( qboolean dynamic )
 	}
 	else
 	{
-#ifdef __PS2__
-		mxgl_TexBrightness();	// the GS multiplies by it as Cd * As
-#endif
 		qglTexImage2D( GL_TEXTURE_2D, 
 					   0, 
 					   gl_lms.internal_format,
@@ -1534,6 +1597,9 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 	// draw texture
 	//
 	poly = Hunk_Alloc (sizeof(glpoly_t) + (lnumverts-4) * VERTEXSIZE*sizeof(float));
+#ifdef __PS2__
+	poly->ps2_first = 0;
+#endif
 	poly->next = fa->polys;
 	poly->flags = fa->flags;
 	fa->polys = poly;
@@ -1700,6 +1766,14 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	{
 		gl_lms.internal_format = gl_tex_solid_format;
 	}
+#ifdef __PS2__
+	/* coloured light (gl_ps2colorlight 1, libgl's mxgl_color_light): the
+	   lightmaps in 8 bits a channel, which libgl multiplies the destination
+	   by a channel at a time (with beam racing, and with 0: by their
+	   brightness, one pass); 0: as their brightness (GL_LUMINANCE8 of the
+	   colour texels: their largest component: the GS's Cd * As) */
+	gl_lms.internal_format = ri.Cvar_Get( "gl_ps2colorlight", "1", CVAR_ARCHIVE )->value ? GL_RGB8 : GL_LUMINANCE8;
+#endif
 
 	/*
 	** initialize the dynamic lightmap texture
@@ -1707,9 +1781,6 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	GL_Bind( gl_state.lightmap_textures + 0 );
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#ifdef __PS2__
-	mxgl_TexBrightness();
-#endif
 	qglTexImage2D( GL_TEXTURE_2D, 
 				   0, 
 				   gl_lms.internal_format,

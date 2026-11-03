@@ -51,12 +51,15 @@ qboolean VID_GetModeInfo(int *width, int *height, int mode) {
 	return true;
 }
 
-/* vid_hires 1: 1080i (glimp_ps2.c), with the textures at half size
-   (gl_picmip 1): a room's do not fit in GS memory at full size (1.8 MiB
-   even as 8-bit indices), with 1080i's buffer in it */
-static cvar_t *vid_ref, *vid_hires;
+/* vid_hires 1: 1080i (glimp_ps2.c); the textures at full size in every
+   mode: where a room's do not fit in GS memory (1.8 MiB even as 8-bit
+   indices: 1080i, the TV's mode without beam racing), libgl leaves their top
+   levels out (MXGL_TEX_AUTO, glimp_ps2.c). vid_beam 1: beam racing, which
+   leaves 3.6 MiB for textures in the TV's mode (1080i: 1.9); vid_rgb24 1:
+   24-bit colour then (TV's mode only) */
+static cvar_t *vid_ref, *vid_hires, *vid_beam, *vid_rgb24, *colorlight;
 static void VID_HiresPicmip(void) {
-	Cvar_SetValue("gl_picmip", vid_hires->value == 1);
+	Cvar_SetValue("gl_picmip", 0);
 }
 
 static void VID_Restart_f(void) { vid_ref->modified = true; }
@@ -65,6 +68,10 @@ void VID_Init(void) {
 	refimport_t ri;
 	vid_ref = Cvar_Get("vid_ref", "gl", 0);
 	vid_hires = Cvar_Get("vid_hires", "0", 0);
+	vid_beam = Cvar_Get("vid_beam", "0", CVAR_ARCHIVE);
+	vid_rgb24 = Cvar_Get("vid_rgb24", "0", CVAR_ARCHIVE);
+	/* coloured lightmaps (ref_gl's gl_rsurf.c, libgl's mxgl_color_light) */
+	colorlight = Cvar_Get("gl_ps2colorlight", "1", CVAR_ARCHIVE);
 	VID_HiresPicmip();
 	Cmd_AddCommand("vid_restart", VID_Restart_f);
 	viddef.width = 640;
@@ -91,7 +98,7 @@ void VID_Init(void) {
 	if (re.Init(NULL, NULL) == -1)
 		Com_Error(ERR_FATAL, "Couldn't start refresh");
 	vid_ref->modified = false;
-	vid_hires->modified = false;
+	vid_hires->modified = vid_beam->modified = vid_rgb24->modified = colorlight->modified = false;
 }
 
 void VID_Shutdown(void) {
@@ -102,8 +109,8 @@ void VID_Shutdown(void) {
 /* the refresh again (win32/vid_dll.c's VID_CheckChanges): the mode is set
    as it starts, the textures and models are loaded again (gl_picmip) */
 void VID_CheckChanges(void) {
-	if (vid_hires->modified) {
-		vid_hires->modified = false;
+	if (vid_hires->modified || vid_beam->modified || vid_rgb24->modified || colorlight->modified) {
+		vid_hires->modified = vid_beam->modified = vid_rgb24->modified = colorlight->modified = false;
 		VID_HiresPicmip();
 		vid_ref->modified = true;
 	}
@@ -120,38 +127,54 @@ void VID_CheckChanges(void) {
 	cls.disable_screen = false;
 }
 
-/* ---- the Video menu: the TV's mode or 1080i (vid_hires) --------------------- */
+/* ---- the Video menu: the TV's mode or 1080i (vid_hires), beam racing
+   (vid_beam), colour (vid_rgb24) ---------------------------------------- */
 
 void M_PopMenu(void);
 
 static menuframework_s vid_menu;
-static menulist_s vid_mode_list;
+static menulist_s vid_mode_list, vid_beam_list, vid_rgb24_list, vid_light_list;
 static menuaction_s vid_apply;
 
 static void VID_ApplyCallback(void *unused) {
 	Cvar_SetValue("vid_hires", vid_mode_list.curvalue);
+	Cvar_SetValue("vid_beam", vid_beam_list.curvalue);
+	Cvar_SetValue("vid_rgb24", vid_rgb24_list.curvalue);
+	Cvar_SetValue("gl_ps2colorlight", vid_light_list.curvalue);
 	M_ForceMenuOff();
+}
+
+static void VID_MenuList(menulist_s *l, const char *name, const char **items, int y, int value) {
+	l->generic.type = MTYPE_SPINCONTROL;
+	l->generic.name = name;
+	l->generic.x = 0;
+	l->generic.y = y;
+	l->itemnames = items;
+	l->curvalue = value;
+	Menu_AddItem(&vid_menu, l);
 }
 
 void VID_MenuInit(void) {
 	static const char *modes[] = {"TV (NTSC/PAL)", "1080i", 0};
+	static const char *offon[] = {"off", "on", 0};
+	static const char *colours[] = {"16-bit", "24-bit (TV, beam racing)", 0};
 	vid_menu.x = viddef.width / 2;
 	vid_menu.y = viddef.height / 2 - 30;
 	vid_menu.nitems = 0;
-	vid_mode_list.generic.type = MTYPE_SPINCONTROL;
-	vid_mode_list.generic.name = "video mode";
-	vid_mode_list.generic.x = 0;
-	vid_mode_list.generic.y = 0;
-	vid_mode_list.itemnames = modes;
-	vid_mode_list.curvalue = Cvar_VariableValue("vid_hires") == 1;
+	VID_MenuList(&vid_mode_list, "video mode", modes, 0, Cvar_VariableValue("vid_hires") == 1);
+	VID_MenuList(&vid_beam_list, "beam racing", offon, 10, Cvar_VariableValue("vid_beam") != 0);
+	VID_MenuList(&vid_rgb24_list, "colour", colours, 20, Cvar_VariableValue("vid_rgb24") != 0);
+	/* coloured light: the lightmaps' pass three times (a channel each) and
+	   their GS memory three times; with beam racing they are monochrome */
+	static const char *lights[] = {"monochrome", "coloured", 0};
+	VID_MenuList(&vid_light_list, "light", lights, 30, Cvar_VariableValue("gl_ps2colorlight") != 0);
 	vid_apply.generic.type = MTYPE_ACTION;
 	vid_apply.generic.name = "apply";
 	vid_apply.generic.x = 0;
-	vid_apply.generic.y = 20;
+	vid_apply.generic.y = 50;
 	vid_apply.generic.callback = VID_ApplyCallback;
-	Menu_AddItem(&vid_menu, &vid_mode_list);
 	Menu_AddItem(&vid_menu, &vid_apply);
-	Menu_SetStatusBar(&vid_menu, "1080i needs a TV that takes it (component)");
+	Menu_SetStatusBar(&vid_menu, "beam racing: more textures, max 60 fps, light monochrome");
 	Menu_Center(&vid_menu);
 }
 
@@ -160,6 +183,11 @@ void VID_MenuDraw(void) {
 	vid_menu.x = viddef.width / 2;
 	re.DrawGetPicSize(&w, &h, "m_banner_video");
 	re.DrawPic(viddef.width / 2 - w / 2, viddef.height / 2 - 110, "m_banner_video");
+	/* light: monochrome with beam racing (libgl draws it so) */
+	if (vid_beam_list.curvalue)
+		vid_light_list.generic.flags |= QMF_GRAYED;
+	else
+		vid_light_list.generic.flags &= ~QMF_GRAYED;
 	Menu_AdjustCursor(&vid_menu, 1);
 	Menu_Draw(&vid_menu);
 }

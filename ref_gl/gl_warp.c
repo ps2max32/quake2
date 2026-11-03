@@ -124,6 +124,9 @@ void SubdividePolygon (int numverts, float *verts)
 
 	// add a point in the center to help keep warp valid
 	poly = Hunk_Alloc (sizeof(glpoly_t) + ((numverts-4)+2) * VERTEXSIZE*sizeof(float));
+#ifdef __PS2__
+	poly->ps2_first = 0;
+#endif
 	poly->next = warpface->polys;
 	warpface->polys = poly;
 	poly->numverts = numverts+2;

@@ -136,17 +136,22 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 
 /* maxsdk's virtual memory (<mx/vm.h>): malloc (the hunks, the zone, the
    sounds) in up to 128 MiB, paged to a swap file next to the game's data;
-   the core heap holds what the GS reads by DMA (libgl: arenas,
-   textures) */
+   what the GS reads by DMA (libgl: arenas, textures) is pinned memory,
+   frames taken as needed */
 const struct mx_vm_config mx_vm_config = {
 	.swap = "host:quake2.swp",
-	.core_heap = MXGL_CORE_BYTES + (6u << 20),
 };
 
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
 	static char line[512] = "quake2 +set basedir host: +set vid_ref gl "
-	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR " PS2_ARGS;
+	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR "
+	                        /* the textures as they are (libgl keeps those of
+	                           the shared palette as indices: exact), not
+	                           through 16to8.dat; one texture unit (the world's
+	                           polygons queue in libgl, faster than two units) */
+	                        "+set gl_ext_palettedtexture 0 "
+	                        "+set gl_ext_multitexture 0 " PS2_ARGS;
 	static char *args[64];
 	int n = 0;
 	for (char *p = strtok(line, " "); p && n < 63; p = strtok(NULL, " "))

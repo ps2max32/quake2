@@ -21,8 +21,11 @@ MXGL     ?= $(PS2MAX)/libs/libgl
 OUT      ?= $(PS2MAX)/build/apps/quake2
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
+# the program in VM (ld/maxsdk-vm.ld), started by mxload.elf; MX_MEMORY=phys:
+# all of it in physical memory (32 MiB, no VM in PCSX2's recompiler)
+MX_MEMORY ?= vm
 include $(MAXSDK)/mk/maxsdk.mk
-# MX_MEMORY=vm (started by mxload.elf): Quake 2 in VM, libgl in core
+# in VM: Quake 2 in VM, libgl in core
 MX_CORE_OBJS = $(MXGL_OBJS)
 
 PICOLIBC ?= $(PS2MAX)/build/libs/picolibc/install
@@ -36,7 +39,7 @@ P        := $(HERE)/ps2
 Q2CFLAGS  = $(filter-out -fno-common -ffreestanding -Wall -Wextra -Wno-unused-parameter -std=gnu11,$(CFLAGS)) \
             -std=gnu89 -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-int -Wno-error=return-type -MMD -fcommon -fno-strict-aliasing -ffast-math -fapprox-func \
             -cl-single-precision-constant -nostdlibinc -isystem $(PICOLIBC)/include \
-            -D__PS2__ -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) $(MXGL_DEFS) \
+            -D__PS2__ -DGL_GLEXT_PROTOTYPES -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) $(MXGL_DEFS) \
             -include $(P)/ps2_stdio.h -include $(P)/ps2_math.h
 
 ENGINE   := client/cl_cin client/cl_ents client/cl_fx client/cl_input client/cl_inv \
@@ -97,7 +100,12 @@ run: $(OUT)/quake2.elf
 	@mkdir -p $(RUNDIR)/baseq2
 	@for f in pak0 pak1 pak2; do [ -f $(RUNDIR)/baseq2/$$f.pak ] || \
 	  cp -v "$(Q2DATA)/$$f.pak" $(RUNDIR)/baseq2/; done
+ifeq ($(MX_MEMORY),vm)
+	cp $(OUT)/quake2.elf $(RUNDIR)/quake2.elf && echo "host:quake2.elf" > $(RUNDIR)/mxload.txt
+	PCSX2_EE=interp ~/.claude/skills/ps2-pcsx2-test/run.sh $(MX_LOADER) $(or $(TIMEOUT),1800)
+else
 	~/.claude/skills/ps2-pcsx2-test/run.sh $(OUT)/quake2.elf $(or $(TIMEOUT),600)
+endif
 
 clean:
 	rm -rf $(OUT)
