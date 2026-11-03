@@ -60,5 +60,4 @@ void GLimp_AppActivate(qboolean active) {}
 void GLimp_EnableLogging(qboolean enable) {}
 void GLimp_LogNewFrame(void) {}
 
-/* x86 assembly on the PC (linux/math.s) */
-long Q_ftol(float f) { return (long)f; }
+/* Q_ftol: x86 assembly on the PC (linux/math.s), a cast here (q_shared.h) */

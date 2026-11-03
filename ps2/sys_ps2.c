@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
 				mx_prof_start(2000), prof_on = 1;
 			if (prof_on == 1 && gt >= PS2_PROF + 1000) {
 				mx_prof_stop();
-				mx_prof_report(600);
+				mx_prof_report(4000);
 				prof_on = 2;
 				ps2_end(0);
 			}
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
 		if (PS2_FRAMES && frames >= PS2_FRAMES) {
 #if PS2_PROF == 1
 			mx_prof_stop();
-			mx_prof_report(600);
+			mx_prof_report(4000);
 #endif
 			int r = mxgl_screenshot("host:quake2.tga");
 			mx_printf("ps2: %d frames, picture host:quake2.tga: %d\n", frames, r);
