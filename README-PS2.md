@@ -26,7 +26,7 @@ the test end marker; `ARGS` is added to the command line.
 | Files | stdio on the IOP file server (`host:`), `ps2/ps2_file.c`; `+set basedir host:` |
 | Sound | id's mixer (`client/snd_dma.c`, `snd_mix.c`) at `s_khz` (11025 Hz by default: the sounds are kept in memory at that rate) 16-bit stereo into a ring, sent to maxsdk's PCM stream (`mx/snd.h`, audsrv) by `ps2/snddma_ps2.c` as far as the mixer has painted |
 | Network | loopback only (`ps2/net_ps2.c`) |
-| Input | pad 0: d-pad arrows, left stick moves, right stick turns, R1 attack (CTRL), X enter, START menu, R3 (right stick pressed) the counters on/off, SELECT TAB; O, square, triangle, R2, L1, L2 are AUX1..6 (bind them) |
+| Input | pad 0: d-pad arrows, left stick moves, right stick turns, R1 attack (CTRL), X jump (Enter in menus), R3 crouch, O use item, START menu, L3 + R3 (both sticks pressed) the counters on/off, SELECT TAB; O, square, triangle, R2, L1, L2 are AUX1..6 (bind them) |
 
 Not done: CD audio (null driver), cinematics are decoded but not tested,
 `Sys_FindFirst` (no save game list), network play. The textures of a room do not all fit

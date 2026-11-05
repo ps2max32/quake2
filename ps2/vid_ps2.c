@@ -225,13 +225,16 @@ static int pad_ok;
 static const struct {
 	u32 bit;
 	int key;
+	int play; /* the key while playing, 0: the same (default.cfg: SPACE jumps,
+	             c crouches, ENTER uses the item) */
 } pad_keys[] = {
 	{MX_PAD_UP, K_UPARROW},     {MX_PAD_DOWN, K_DOWNARROW}, {MX_PAD_LEFT, K_LEFTARROW},
-	{MX_PAD_RIGHT, K_RIGHTARROW}, {MX_PAD_CROSS, K_ENTER},  {MX_PAD_CIRCLE, K_AUX1},
+	{MX_PAD_RIGHT, K_RIGHTARROW}, {MX_PAD_CROSS, K_ENTER, K_SPACE}, {MX_PAD_CIRCLE, K_AUX1, K_ENTER},
 	{MX_PAD_SQUARE, K_AUX2},    {MX_PAD_TRIANGLE, K_AUX3},  {MX_PAD_R1, K_CTRL},
 	{MX_PAD_R2, K_AUX4},        {MX_PAD_L1, K_AUX5},        {MX_PAD_L2, K_AUX6},
-	{MX_PAD_START, K_ESCAPE},   {MX_PAD_SELECT, K_TAB},
+	{MX_PAD_START, K_ESCAPE},   {MX_PAD_SELECT, K_TAB},     {MX_PAD_R3, 'c'},
 };
+#define PAD_KEYS (sizeof pad_keys / sizeof pad_keys[0])
 static float stick[4]; /* right x, y, left x, y: -1 .. 1 */
 cvar_t *in_joystick; /* the options menu shows it */
 
@@ -250,14 +253,15 @@ void Sys_SendKeyEvents(void) {
 		static u32 last;
 		u32 held = mx_pad_buttons(0);
 		unsigned t = Sys_Milliseconds();
-		for (unsigned i = 0; i < sizeof pad_keys / sizeof pad_keys[0]; i++) {
+		static int down[PAD_KEYS]; /* the key each button pressed: released the same */
+		for (unsigned i = 0; i < PAD_KEYS; i++) {
 			u32 b = pad_keys[i].bit;
-			if ((held ^ last) & b)
-				Key_Event(pad_keys[i].key, (held & b) != 0, t);
+			if (!((held ^ last) & b))
+				continue;
+			if (held & b)
+				down[i] = cls.key_dest == key_game && pad_keys[i].play ? pad_keys[i].play : pad_keys[i].key;
+			Key_Event(down[i], (held & b) != 0, t);
 		}
-		/* R3 (the right stick pressed): the counters on and off */
-		if (held & ~last & MX_PAD_R3)
-			mxgl_show_stats = !mxgl_show_stats;
 		last = held;
 		u8 st[4];
 		if (mx_pad_sticks(0, st))

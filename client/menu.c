@@ -3908,6 +3908,7 @@ const char *M_Quit_Key (int key)
 
 	case 'Y':
 	case 'y':
+	case K_ENTER: // the pad has no Y
 		cls.key_dest = key_console;
 		CL_Quit_f ();
 		break;

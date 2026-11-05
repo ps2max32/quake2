@@ -139,12 +139,12 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
    what the GS reads by DMA (libgl: arenas, textures) is pinned memory,
    frames taken as needed */
 const struct mx_vm_config mx_vm_config = {
-	.swap = "host:quake2.swp",
+	.swap = "quake2.swp",
 };
 
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
-	static char line[512] = "quake2 +set basedir host: +set vid_ref gl "
+	static char line[512] = "quake2 +set basedir . +set vid_ref gl "
 	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR "
 	                        /* the textures as they are (libgl keeps those of
 	                           the shared palette as indices: exact), not
@@ -199,8 +199,8 @@ int main(int argc, char **argv) {
 			mx_prof_stop();
 			mx_prof_report(4000);
 #endif
-			int r = mxgl_screenshot("host:quake2.tga");
-			mx_printf("ps2: %d frames, picture host:quake2.tga: %d\n", frames, r);
+			int r = mxgl_screenshot("quake2.tga");
+			mx_printf("ps2: %d frames, picture quake2.tga: %d\n", frames, r);
 			ps2_end(0);
 		}
 	}
