@@ -174,7 +174,7 @@ void VID_MenuInit(void) {
 	vid_apply.generic.y = 50;
 	vid_apply.generic.callback = VID_ApplyCallback;
 	Menu_AddItem(&vid_menu, &vid_apply);
-	Menu_SetStatusBar(&vid_menu, "beam racing: more textures, max 60 fps, light monochrome");
+	Menu_SetStatusBar(&vid_menu, "beam racing: more textures, max 60 fps");
 	Menu_Center(&vid_menu);
 }
 

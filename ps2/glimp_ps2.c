@@ -35,8 +35,11 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen) {
 		beam->modified = false;
 	}
 	/* coloured light: the lightmaps' products a channel at a time
-	   (gl_rsurf.c keeps them in 8 bits a channel) */
-	mxgl_color_light(ri.Cvar_Get("gl_ps2colorlight", "1", CVAR_ARCHIVE)->value != 0);
+	   (gl_rsurf.c keeps them in 8 bits a channel); not in 1080i with beam
+	   racing: the passes do not fit their time then (demo1: 620 of 12030 late,
+	   against 44), in the TV's mode they do (no pass late, 5% of the frames) */
+	mxgl_color_light(ri.Cvar_Get("gl_ps2colorlight", "1", CVAR_ARCHIVE)->value != 0 &&
+	                 !(hires && (mxgl_mode_flags() & MXGL_BEAM)));
 	int w, h;
 	mxgl_screen(&w, &h);
 	if (hires)

@@ -102,9 +102,9 @@ run: $(OUT)/quake2.elf
 	  cp -v "$(Q2DATA)/$$f.pak" $(RUNDIR)/baseq2/; done
 ifeq ($(MX_MEMORY),vm)
 	cp $(OUT)/quake2.elf $(RUNDIR)/quake2.elf && echo "host:quake2.elf" > $(RUNDIR)/mxload.txt
-	PCSX2_EE=interp ~/.claude/skills/ps2-pcsx2-test/run.sh $(MX_LOADER) $(or $(TIMEOUT),1800)
+	PCSX2_EE=interp $(PCSX2_RUN) $(MX_LOADER) $(or $(TIMEOUT),1800)
 else
-	~/.claude/skills/ps2-pcsx2-test/run.sh $(OUT)/quake2.elf $(or $(TIMEOUT),600)
+	$(PCSX2_RUN) $(OUT)/quake2.elf $(or $(TIMEOUT),600)
 endif
 
 clean:
