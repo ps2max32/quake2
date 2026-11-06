@@ -21,7 +21,7 @@ MXGL     ?= $(PS2MAX)/libs/libgl
 OUT      ?= $(PS2MAX)/build/apps/quake2
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
-# the program in VM (ld/maxsdk-vm.ld), started by mxload.elf; MX_MEMORY=phys:
+# the program in VM (ld/maxsdk-vm.ld), started by mxlink; MX_MEMORY=phys:
 # all of it in physical memory (32 MiB, no VM in PCSX2's recompiler)
 MX_MEMORY ?= vm
 include $(MAXSDK)/mk/maxsdk.mk
