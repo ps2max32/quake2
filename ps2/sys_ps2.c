@@ -18,11 +18,6 @@ void mx_exit(int status) __attribute__((noreturn));
 
 int ps2_cl_time(void);
 
-static void ps2_end(int status) {
-	mx_printf("@@PS2TEST_END@@ status=%d\n", status);
-	mx_exit(status);
-}
-
 /* ---- the console and errors ---------------------------------------------- */
 
 void Sys_ConsoleOutput(char *string) {
@@ -41,12 +36,12 @@ void Sys_Error(char *error, ...) {
 	vsnprintf(text, sizeof text, error, ap);
 	va_end(ap);
 	mx_printf("Sys_Error: %s\n", text);
-	ps2_end(1);
+	mx_exit(1);
 }
 
 void Sys_Quit(void) {
 	mx_printf("Sys_Quit\n");
-	ps2_end(0);
+	mx_exit(0);
 }
 
 char *Sys_ConsoleInput(void) { return NULL; }
@@ -190,7 +185,7 @@ int main(int argc, char **argv) {
 				mx_prof_stop();
 				mx_prof_report(4000);
 				prof_on = 2;
-				ps2_end(0);
+				mx_exit(0);
 			}
 		}
 #endif
@@ -201,7 +196,7 @@ int main(int argc, char **argv) {
 #endif
 			int r = mxgl_screenshot("quake2.tga");
 			mx_printf("ps2: %d frames, picture quake2.tga: %d\n", frames, r);
-			ps2_end(0);
+			mx_exit(0);
 		}
 	}
 	return 0;
