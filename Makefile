@@ -12,7 +12,7 @@
 # and Sys_Error do not clash). The refresh draws through libs/libgl
 # (ps2/qgl_ps2.c, ps2/glimp_ps2.c). Sound is id's mixer on maxsdk's
 # mx/snd.h stream (ps2/snddma_ps2.c); CD audio is id's null driver, the
-# network the loopback (ps2/net_ps2.c).
+# network the loopback and UDP by BSD sockets (ps2/net_ps2.c).
 
 HERE     := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PS2MAX   ?= $(abspath $(HERE)/../..)
@@ -39,7 +39,7 @@ P        := $(HERE)/ps2
 Q2CFLAGS  = $(filter-out -fno-common -ffreestanding -Wall -Wextra -Wno-unused-parameter -std=gnu11,$(CFLAGS)) \
             -std=gnu89 -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-int -Wno-error=return-type -MMD -fcommon -fno-strict-aliasing -ffast-math -fapprox-func \
             -cl-single-precision-constant -nostdlibinc -isystem $(PICOLIBC)/include \
-            -D__PS2__ -DGL_GLEXT_PROTOTYPES -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) $(MXGL_DEFS) \
+            $(MX_NET_CFLAGS) -D__PS2__ -DGL_GLEXT_PROTOTYPES -Dstricmp=strcasecmp -I$(P) -I$(OUT)/ps2 -I$(MXGL_INC) $(MXGL_DEFS) \
             -include $(P)/ps2_stdio.h -include $(P)/ps2_math.h
 
 ENGINE   := client/cl_cin client/cl_ents client/cl_fx client/cl_input client/cl_inv \
