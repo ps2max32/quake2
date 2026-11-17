@@ -23,7 +23,9 @@ int GLimp_Init(void *hinstance, void *hWnd) {
 	return true;
 }
 
-/* the mode of vid_hires, and the window of it */
+/* the mode (vid_hires 0: the system's, libgl's MXGL_SD; 1: 1080i where the
+   system lets a game take it), and the window of it: 960 x 540 in the 720
+   and 1080 line modes */
 int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen) {
 	int hires = ri.Cvar_Get("vid_hires", "0", 0)->value == 1;
 	cvar_t *beam = ri.Cvar_Get("vid_beam", "0", CVAR_ARCHIVE);
@@ -38,11 +40,12 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen) {
 	   (gl_rsurf.c keeps them in 8 bits a channel); not in 1080i with beam
 	   racing: the passes do not fit their time then (demo1: 620 of 12030 late,
 	   against 44), in the TV's mode they do (no pass late, 5% of the frames) */
-	mxgl_color_light(ri.Cvar_Get("gl_ps2colorlight", "1", CVAR_ARCHIVE)->value != 0 &&
-	                 !(hires && (mxgl_mode_flags() & MXGL_BEAM)));
 	int w, h;
 	mxgl_screen(&w, &h);
-	if (hires)
+	int big = h > 576;
+	mxgl_color_light(ri.Cvar_Get("gl_ps2colorlight", "1", CVAR_ARCHIVE)->value != 0 &&
+	                 !(big && (mxgl_mode_flags() & MXGL_BEAM)));
+	if (big)
 		w = 960, h = 540;
 	mxgl_window(w, h);
 	*pwidth = w;
