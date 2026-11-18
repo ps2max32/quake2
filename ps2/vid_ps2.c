@@ -2,6 +2,7 @@
    (ref_gl, linked in: ref_GetRefAPI) on libgl, and pad 0. From
    null/vid_null.c. */
 
+#include <math.h>
 #include <mx/mx.h>
 #include <mx/pad.h>
 #include <mxgl.h>
@@ -237,9 +238,38 @@ static const struct {
 #define PAD_KEYS (sizeof pad_keys / sizeof pad_keys[0])
 static float stick[4]; /* right x, y, left x, y: -1 .. 1 */
 cvar_t *in_joystick; /* the options menu shows it */
+/* the sticks (the console or config.cfg change them) */
+static cvar_t *joy_deadzone, *joy_curve, *joy_yawspeed, *joy_pitchspeed;
+
+/* A stick's two axes (-1 .. 1) as a PS4 or PS5 game takes them: a round dead
+   zone dz (drift, also diagonal), the rest stretched to 0 .. 1 and raised to
+   the power curve (1: linear; 1.5: finer aim near the middle, full speed
+   at the edge), the direction kept */
+static void stick_shape(float *x, float *y, float dz, float curve) {
+	float m = sqrtf(*x * *x + *y * *y);
+	if (m <= dz || m <= 0) {
+		*x = *y = 0;
+		return;
+	}
+	float s = (m - dz) / (1 - dz);
+	if (s > 1)
+		s = 1;
+	s = powf(s, curve);
+	*x *= s / m;
+	*y *= s / m;
+}
+
+static float stick_raw(u8 v) {
+	float f = ((int)v - 128) / 127.0f;
+	return f < -1 ? -1 : f > 1 ? 1 : f;
+}
 
 void IN_Init(void) {
 	in_joystick = Cvar_Get("in_joystick", "1", CVAR_ARCHIVE);
+	joy_deadzone = Cvar_Get("joy_deadzone", "0.22", CVAR_ARCHIVE);
+	joy_curve = Cvar_Get("joy_curve", "1.5", CVAR_ARCHIVE);
+	joy_yawspeed = Cvar_Get("joy_yawspeed", "270", CVAR_ARCHIVE);
+	joy_pitchspeed = Cvar_Get("joy_pitchspeed", "175", CVAR_ARCHIVE);
 	pad_ok = mx_pad_init() >= 0;
 	Com_Printf("pad: %s\n", pad_ok ? "ok" : "no driver");
 }
@@ -264,25 +294,25 @@ void Sys_SendKeyEvents(void) {
 		}
 		last = held;
 		u8 st[4];
-		if (mx_pad_sticks(0, st))
-			for (int k = 0; k < 4; k++) {
-				int v = (int)st[k] - 128;
-				v = v > -32 && v < 32 ? 0 : v > 0 ? v - 32 : v + 32;
-				stick[k] = v / 96.0f;
-			}
+		if (mx_pad_sticks(0, st)) {
+			for (int k = 0; k < 4; k++)
+				stick[k] = stick_raw(st[k]);
+			stick_shape(&stick[0], &stick[1], joy_deadzone->value, joy_curve->value); /* look */
+			stick_shape(&stick[2], &stick[3], joy_deadzone->value, 1);               /* move */
+		}
 	}
 	sys_frame_time = Sys_Milliseconds();
 }
 
 void IN_Frame(void) {}
 
-/* the left stick moves, the right one turns (180 degrees a second at full
-   turn) */
+/* the left stick moves, the right one turns (joy_yawspeed and
+   joy_pitchspeed degrees a second at full turn) */
 void IN_Move(usercmd_t *cmd) {
 	if (cls.key_dest != key_game)
 		return;
 	cmd->forwardmove -= stick[3] * cl_forwardspeed->value;
 	cmd->sidemove += stick[2] * cl_sidespeed->value;
-	cl.viewangles[YAW] -= stick[0] * 180.0f * cls.frametime;
-	cl.viewangles[PITCH] += stick[1] * 135.0f * cls.frametime;
+	cl.viewangles[YAW] -= stick[0] * joy_yawspeed->value * cls.frametime;
+	cl.viewangles[PITCH] += stick[1] * joy_pitchspeed->value * cls.frametime;
 }
