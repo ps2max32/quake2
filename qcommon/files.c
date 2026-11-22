@@ -510,6 +510,8 @@ Sets fs_gamedir, adds the directory to the head of the path,
 then loads and adds pak1.pak pak2.pak ... 
 ================
 */
+static void FS_AddBaseGameDirectory (char *dir);
+
 void FS_AddGameDirectory (char *dir)
 {
 	int				i;
@@ -618,7 +620,8 @@ void FS_SetGamedir (char *dir)
 	if (dedicated && !dedicated->value)
 		Cbuf_AddText ("vid_restart\nsnd_restart\n");
 
-	Com_sprintf (fs_gamedir, sizeof(fs_gamedir), "%s/%s", fs_basedir->string, dir);
+	/* PS2: written next to the program (FS_AddBaseGameDirectory) */
+	Com_sprintf (fs_gamedir, sizeof(fs_gamedir), "./%s", dir);
 
 	if (!strcmp(dir,BASEDIRNAME) || (*dir == 0))
 	{
@@ -630,7 +633,7 @@ void FS_SetGamedir (char *dir)
 		Cvar_FullSet ("gamedir", dir, CVAR_SERVERINFO|CVAR_NOSET);
 		if (fs_cddir->string[0])
 			FS_AddGameDirectory (va("%s/%s", fs_cddir->string, dir) );
-		FS_AddGameDirectory (va("%s/%s", fs_basedir->string, dir) );
+		FS_AddBaseGameDirectory (dir);
 	}
 }
 
@@ -835,6 +838,28 @@ char *FS_NextPath (char *prevpath)
 
 /*
 ================
+FS_AddBaseGameDirectory
+
+PS2: a game directory of the base directory; when that is elsewhere (the
+game data shared by games, +set basedir ../DATA/quake2), the one of the same
+name next to the program after it, so what the game writes (config.cfg,
+saves) goes there and is found first
+================
+*/
+static void FS_AddBaseGameDirectory (char *dir)
+{
+	FS_AddGameDirectory (va("%s/%s", fs_basedir->string, dir) );
+	if (strcmp (fs_basedir->string, "."))
+	{
+		char	own[MAX_OSPATH];
+		Com_sprintf (own, sizeof(own), "./%s", dir);
+		Sys_Mkdir (own);
+		FS_AddGameDirectory (own);
+	}
+}
+
+/*
+================
 FS_InitFilesystem
 ================
 */
@@ -862,7 +887,7 @@ void FS_InitFilesystem (void)
 	//
 	// start up with baseq2 by default
 	//
-	FS_AddGameDirectory (va("%s/"BASEDIRNAME, fs_basedir->string) );
+	FS_AddBaseGameDirectory (BASEDIRNAME);
 
 	// any set gamedirs will be freed up to here
 	fs_base_searchpaths = fs_searchpaths;

@@ -5,6 +5,7 @@
 
 #include <mx/mx.h>
 #include <mx/prof.h>
+#include <mx/sif.h>
 #include <mx/vm.h>
 #include <mxgl.h>
 
@@ -108,7 +109,7 @@ void Hunk_Free(void *base) {
 
 /* ---- files -------------------------------------------------------------------- */
 
-void Sys_Mkdir(char *path) {}
+void Sys_Mkdir(char *path) { mx_fio_mkdir(path, 0777); }
 char *Sys_FindFirst(char *path, unsigned musthave, unsigned canthave) { return NULL; }
 char *Sys_FindNext(unsigned musthave, unsigned canthave) { return NULL; }
 void Sys_FindClose(void) {}
@@ -139,7 +140,7 @@ const struct mx_vm_config mx_vm_config = {
 
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
-	static char line[512] = "quake2 +set basedir . +set vid_ref gl "
+	static char line[512] = "quake2 +set vid_ref gl "
 	                        "+set gl_texturemode GL_LINEAR_MIPMAP_LINEAR "
 	                        /* the textures as they are (libgl keeps those of
 	                           the shared palette as indices: exact), not
@@ -153,6 +154,11 @@ int main(int argc, char **argv) {
 	int n = 0;
 	for (char *p = strtok(line, " "); p && n < 63; p = strtok(NULL, " "))
 		args[n++] = p;
+	/* then the program's own: the shell's args= of game.ini, e.g.
+	   "+set basedir ../DATA/quake2" (game.ini's data=); without it the
+	   game's directory, "." */
+	for (int i = 1; i < argc && n < 63; i++)
+		args[n++] = argv[i];
 	mx_printf("Quake 2 on maxsdk: virtual memory %s\n", mx_vm_active() ? "on" : "off");
 	Qcommon_Init(n, args);
 
