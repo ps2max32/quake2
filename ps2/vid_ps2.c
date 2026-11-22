@@ -5,6 +5,7 @@
 #include <math.h>
 #include <mx/mx.h>
 #include <mx/pad.h>
+#include <GL/gl.h>
 #include <mxgl.h>
 
 #include "../client/client.h"
@@ -64,6 +65,23 @@ static void VID_HiresPicmip(void) {
 }
 
 static void VID_Restart_f(void) { vid_ref->modified = true; }
+
+/* the menus' screen (client/menu.c's M_Draw), as GLQuake's 2D (640 x 480 on any
+   screen): 480 high and as wide as the picture's aspect gives with square
+   pixels, 640 on the TV (4:3), 854 in 1080i (16:9; a menu pixel 2.25 x 2.25
+   pixels of 1920 x 1080), so a 16:9 picture does not stretch the menu */
+void VID_MenuSize(int *w, int *h) {
+	*w = mxgl_wide() ? 854 : 640;
+	*h = 480;
+}
+
+/* the 2D drawn as w x h (as ref_gl's R_SetGL2D, which uses the window's) */
+void VID_Set2D(int w, int h) {
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, w, h, 0, -99999, 99999);
+	glMatrixMode(GL_MODELVIEW);
+}
 
 void VID_Init(void) {
 	refimport_t ri;
@@ -243,7 +261,7 @@ static cvar_t *joy_deadzone, *joy_curve, *joy_yawspeed, *joy_pitchspeed;
 
 /* A stick's two axes (-1 .. 1) as a PS4 or PS5 game takes them: a round dead
    zone dz (drift, also diagonal), the rest stretched to 0 .. 1 and raised to
-   the power curve (1: linear; 1.5: finer aim near the middle, full speed
+   the power curve (1: linear; 2: finer aim near the middle, full speed
    at the edge), the direction kept */
 static void stick_shape(float *x, float *y, float dz, float curve) {
 	float m = sqrtf(*x * *x + *y * *y);
@@ -267,9 +285,9 @@ static float stick_raw(u8 v) {
 void IN_Init(void) {
 	in_joystick = Cvar_Get("in_joystick", "1", CVAR_ARCHIVE);
 	joy_deadzone = Cvar_Get("joy_deadzone", "0.22", CVAR_ARCHIVE);
-	joy_curve = Cvar_Get("joy_curve", "1.5", CVAR_ARCHIVE);
-	joy_yawspeed = Cvar_Get("joy_yawspeed", "270", CVAR_ARCHIVE);
-	joy_pitchspeed = Cvar_Get("joy_pitchspeed", "175", CVAR_ARCHIVE);
+	joy_curve = Cvar_Get("joy_curve", "2", CVAR_ARCHIVE);
+	joy_yawspeed = Cvar_Get("joy_yawspeed", "215", CVAR_ARCHIVE);
+	joy_pitchspeed = Cvar_Get("joy_pitchspeed", "145", CVAR_ARCHIVE);
 	pad_ok = mx_pad_init() >= 0;
 	Com_Printf("pad: %s\n", pad_ok ? "ok" : "no driver");
 }

@@ -3987,7 +3987,33 @@ void M_Draw (void)
 	else
 		re.DrawFadeScreen ();
 
+#ifdef __PS2__
+	{
+	/* the menus in the size VID_MenuSize gives (ps2/vid_ps2.c); viddef's
+	   size is the menu's meanwhile */
+	void VID_MenuSize (int *w, int *h);
+	void VID_Set2D (int w, int h);
+	int vid_w = viddef.width, vid_h = viddef.height;
+	int menu_w = vid_w, menu_h = vid_h;
+	VID_MenuSize (&menu_w, &menu_h);
+	int scale = menu_w != vid_w || menu_h != vid_h;
+	if (scale)
+	{
+		viddef.width = menu_w;
+		viddef.height = menu_h;
+		VID_Set2D (menu_w, menu_h);
+	}
 	m_drawfunc ();
+	if (scale)
+	{
+		viddef.width = vid_w;
+		viddef.height = vid_h;
+		VID_Set2D (vid_w, vid_h);
+	}
+	}
+#else
+	m_drawfunc ();
+#endif
 
 	// delay playing the enter sound until after the
 	// menu has been drawn, to avoid delay while

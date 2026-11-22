@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 	                        "+set gl_ext_palettedtexture 0 "
 	                        "+set gl_ext_multitexture 0 "
 	                        /* after config.cfg (not +set: that comes before it) */
-	                        "+joy_deadzone 0.22 +joy_curve 1.5 " PS2_ARGS;
+	                        "+joy_deadzone 0.22 +joy_curve 2 +joy_yawspeed 215 +joy_pitchspeed 145 " PS2_ARGS;
 	static char *args[64];
 	int n = 0;
 	for (char *p = strtok(line, " "); p && n < 63; p = strtok(NULL, " "))
