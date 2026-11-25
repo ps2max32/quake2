@@ -21,9 +21,7 @@ MXGL     ?= $(PS2MAX)/libs/libgl
 OUT      ?= $(PS2MAX)/build/apps/quake2
 all: $(OUT)/quake2.elf
 include $(MXGL)/mk/mxgl.mk
-# the program in VM (ld/maxsdk-vm.ld), started by mxlink; MX_MEMORY=phys:
-# all of it in physical memory (32 MiB, no VM in PCSX2's recompiler)
-MX_MEMORY ?= vm
+# an MXOS program: in VM (ld/maxsdk-vm.ld), started by the kernel (apps/mxos)
 include $(MAXSDK)/mk/maxsdk.mk
 # in VM: Quake 2 in VM, libgl in core
 MX_FAST_OBJS = $(MXGL_OBJS)
@@ -110,12 +108,8 @@ run: $(OUT)/quake2.elf
 	@mkdir -p $(RUNDIR)/baseq2
 	@for f in pak0 pak1 pak2; do [ -f $(RUNDIR)/baseq2/$$f.pak ] || \
 	  cp -v "$(Q2DATA)/$$f.pak" $(RUNDIR)/baseq2/; done
-ifeq ($(MX_MEMORY),vm)
 	cp $(OUT)/quake2.elf $(RUNDIR)/quake2.elf && echo "host:quake2.elf" > $(RUNDIR)/mxload.txt
 	PCSX2_EE=interp $(PCSX2_RUN) $(MX_LOADER) $(or $(TIMEOUT),1800)
-else
-	$(PCSX2_RUN) $(OUT)/quake2.elf $(or $(TIMEOUT),600)
-endif
 
 clean:
 	rm -rf $(OUT)

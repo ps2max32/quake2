@@ -130,13 +130,6 @@ void *Sys_GetGameAPI(void *parms) { return game_GetGameAPI(parms); }
 
 /* ---- main ------------------------------------------------------------------------- */
 
-/* maxsdk's virtual memory (<mx/vm.h>): malloc (the hunks, the zone, the
-   sounds) in up to 128 MiB, paged to a swap file next to the game's data;
-   what the GS reads by DMA (libgl: arenas, textures) is pinned memory,
-   frames taken as needed */
-const struct mx_vm_config mx_vm_config = {
-	.swap = "quake2.swp",
-};
 
 int main(int argc, char **argv) {
 	/* the command line: Quake 2's settings for the PS2, then PS2_ARGS */
